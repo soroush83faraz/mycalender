@@ -60,13 +60,37 @@ class CalendarScreen extends StatelessWidget {
       backgroundColor: Theme.of(context).colorScheme.primary,
       foregroundColor: Colors.white,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(
-          'تقویم فارسی',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'تقویم فارسی',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.today, color: Colors.white),
+                  onPressed: provider.goToToday,
+                  tooltip: 'امروز',
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.view_module, color: Colors.white),
+                  onSelected: provider.setView,
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'month', child: Text('نمای ماهانه')),
+                    const PopupMenuItem(value: 'week', child: Text('نمای هفتگی')),
+                    const PopupMenuItem(value: 'year', child: Text('نمای سالانه')),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
         background: Container(
           decoration: BoxDecoration(
@@ -81,22 +105,6 @@ class CalendarScreen extends StatelessWidget {
           ),
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.today),
-          onPressed: provider.goToToday,
-          tooltip: 'امروز',
-        ),
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.view_module),
-          onSelected: provider.setView,
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'month', child: Text('نمای ماهانه')),
-            const PopupMenuItem(value: 'week', child: Text('نمای هفتگی')),
-            const PopupMenuItem(value: 'year', child: Text('نمای سالانه')),
-          ],
-        ),
-      ],
     );
   }
 

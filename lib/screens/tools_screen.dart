@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/date_conversion_service.dart';
+import '../services/nowruz_service.dart';
 import '../models/jalali_date.dart';
 import '../utils/calendar_utils.dart';
 
@@ -593,17 +594,68 @@ class _CountdownWidgetState extends State<CountdownWidget> {
   }
 }
 
-class NewYearCountdownWidget extends StatelessWidget {
+class NewYearCountdownWidget extends StatefulWidget {
   const NewYearCountdownWidget({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  State<NewYearCountdownWidget> createState() => _NewYearCountdownWidgetState();
+}
+
+class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
+  DateTime? exactNowruzTime;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExactNowruzTime();
+  }
+
+  Future<void> _loadExactNowruzTime() async {
     final now = DateTime.now();
     final currentJalali = JalaliDate.fromGregorian(now);
-    final nextYear = currentJalali.year + 1;
-    final newYearJalali = JalaliDate(year: nextYear, month: 1, day: 1);
-    final newYearGregorian = CalendarUtils.toGregorian(newYearJalali);
-    final daysUntilNewYear = newYearGregorian.difference(now).inDays;
+    
+    // Determine which year's Nowruz to show
+    final currentYear = now.year;
+    final thisYearNowruz = await NowruzService.getExactNowruzTime(currentYear);
+    
+    if (thisYearNowruz != null && now.isBefore(thisYearNowruz)) {
+      exactNowruzTime = thisYearNowruz;
+    } else {
+      exactNowruzTime = await NowruzService.getExactNowruzTime(currentYear + 1);
+    }
+    
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (exactNowruzTime == null) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        child: const Text('خطا در بارگیری اطلاعات'),
+      );
+    }
+
+    final now = DateTime.now();
+    final nextJalaliYear = JalaliDate.fromGregorian(exactNowruzTime!).year;
+    
+    // Calculate exact time difference
+    final difference = exactNowruzTime!.difference(now);
+    final daysUntilNewYear = difference.inDays;
+    final hoursLeft = difference.inHours % 24;
+    final minutesLeft = difference.inMinutes % 60;
     
     return Container(
       padding: const EdgeInsets.all(24),
@@ -611,7 +663,7 @@ class NewYearCountdownWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'نوروز ${CalendarUtils.toPersianNumber(nextYear)}',
+            'نوروز ${CalendarUtils.toPersianNumber(nextJalaliYear)}',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
@@ -620,18 +672,33 @@ class NewYearCountdownWidget extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  Text(
-                    '${CalendarUtils.toPersianNumber(daysUntilNewYear)} روز مانده',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                  if (daysUntilNewYear > 0) ...[
+                    Text(
+                      '${CalendarUtils.toPersianNumber(daysUntilNewYear)} روز',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
                     ),
-                  ),
+                    Text(
+                      '${CalendarUtils.toPersianNumber(hoursLeft)} ساعت و ${CalendarUtils.toPersianNumber(minutesLeft)} دقیقه',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ] else if (daysUntilNewYear == 0) ...[
+                    const Text(
+                      'امروز نوروز!',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
-                    'تا سال ${CalendarUtils.toPersianNumber(nextYear)}',
-                    style: const TextStyle(fontSize: 16),
+                    'لحظه دقیق: ${CalendarUtils.toPersianNumber(exactNowruzTime!.day)} مارس - ${CalendarUtils.toPersianNumber(exactNowruzTime!.hour)}:${CalendarUtils.toPersianNumber(exactNowruzTime!.minute.toString().padLeft(2, '0'))}',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),

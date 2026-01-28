@@ -79,11 +79,7 @@ class ModernCalendarGrid extends StatelessWidget {
       itemCount: 35, // 5 weeks * 7 days
       itemBuilder: (context, index) {
         if (index < firstDayWeekday || index >= firstDayWeekday + daysInMonth) {
-          return Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withOpacity(0.2), width: 0.5),
-            ),
-          );
+          return Container();
         }
 
         final day = index - firstDayWeekday + 1;
@@ -104,9 +100,23 @@ class ModernCalendarGrid extends StatelessWidget {
     return GestureDetector(
       onTap: () => onDaySelected?.call(day),
       child: Container(
+        margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: _getDayBackgroundColor(context, isSelected, isToday, hasHoliday),
-          border: Border.all(color: Colors.grey.withOpacity(0.2), width: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: isToday && !isSelected
+              ? Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                )
+              : null,
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
         ),
         child: Stack(
           children: [
@@ -114,7 +124,7 @@ class ModernCalendarGrid extends StatelessWidget {
               child: Text(
                 CalendarUtils.toPersianNumber(day),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.w500,
                   color: _getDayTextColor(context, isSelected, isToday, hasHoliday),
                 ),
@@ -122,11 +132,11 @@ class ModernCalendarGrid extends StatelessWidget {
             ),
             if (dayEvents.isNotEmpty)
               Positioned(
-                top: 2,
-                right: 2,
+                top: 4,
+                right: 4,
                 child: Container(
-                  width: 6,
-                  height: 6,
+                  width: 8,
+                  height: 8,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.secondary,
                     shape: BoxShape.circle,
@@ -135,11 +145,11 @@ class ModernCalendarGrid extends StatelessWidget {
               ),
             if (hasHoliday)
               Positioned(
-                bottom: 2,
-                left: 2,
+                bottom: 4,
+                left: 4,
                 child: Container(
-                  width: 4,
-                  height: 4,
+                  width: 6,
+                  height: 6,
                   decoration: BoxDecoration(
                     color: _getHolidayColor(dayHolidays.first.type),
                     shape: BoxShape.circle,
