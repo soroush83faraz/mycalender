@@ -1,0 +1,14 @@
+linter:
+  rules:
+    - camel_case_types
+    - camel_case_extensions
+    - file_names
+    - library_names
+    - library_prefixes
+    - non_constant_identifier_names
+    - prefer_final_fields
+    - unnecessary_getters_setters
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
