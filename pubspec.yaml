@@ -23,6 +23,10 @@ dependencies:
   flutter_staggered_animations: ^1.1.1
   url_launcher: ^6.3.0
   package_info_plus: ^8.0.0
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:

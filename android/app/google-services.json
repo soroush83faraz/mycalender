@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "705027437169",
+    "project_id": "fire-demo-2dbb6",
+    "storage_bucket": "fire-demo-2dbb6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:705027437169:android:febca32dfaa6871678a1d0",
+        "android_client_info": {
+          "package_name": "com.example.persian_calendar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOeaiJ3f3mXVWg14tYlT9ZuKufbHTXvSk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
