@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../providers/calendar_provider.dart';
-import '../models/settings.dart';
+import 'backend_health_check_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -14,6 +14,15 @@ class SettingsScreen extends StatelessWidget {
         return Scaffold(
           appBar: AppBar(
             title: const Text('تنظیمات'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'Sign Out',
+                onPressed: provider.isSignedIn
+                    ? () => _confirmSignOut(context, provider)
+                    : null,
+              ),
+            ],
           ),
           body: ListView(
             padding: const EdgeInsets.all(16),
@@ -250,6 +259,36 @@ class SettingsScreen extends StatelessWidget {
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () => _showContactDialog(context),
             ),
+            ListTile(
+              title: const Text('Backend Health Check'),
+              subtitle: const Text('View auth and backend sync status'),
+              leading: const Icon(Icons.health_and_safety),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const BackendHealthCheckScreen(),
+                  ),
+                );
+              },
+            ),
+            Consumer<CalendarProvider>(
+              builder: (context, provider, child) {
+                return ListTile(
+                  title: const Text('Sign Out'),
+                  subtitle: Text(
+                    provider.currentUser?.email ?? 'Signed in user session',
+                  ),
+                  leading: const Icon(Icons.logout),
+                  trailing: const Icon(Icons.arrow_forward_ios),
+                  enabled: provider.isSignedIn,
+                  onTap: provider.isSignedIn
+                      ? () => _confirmSignOut(context, provider)
+                      : null,
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -384,6 +423,40 @@ class SettingsScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _confirmSignOut(
+    BuildContext context,
+    CalendarProvider provider,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await provider.signOutCurrentUser();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign out failed: $error')),
+      );
+    }
   }
 
   String _getViewName(String view) {

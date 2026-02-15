@@ -1,9 +1,50 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+    function signedIn() { return request.auth != null; }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /calendars/{calendarId} {
+      function isOwner() {
+        return signedIn() && resource.data.ownerId == request.auth.uid;
+      }
+      function isMember() {
+        return signedIn() &&
+          exists(/databases/$(database)/documents/calendars/$(calendarId)/members/$(request.auth.uid));
+      }
+      function role() {
+        return get(/databases/$(database)/documents/calendars/$(calendarId)/members/$(request.auth.uid)).data.role;
+      }
+      function canWriteEvents() {
+        return isMember() && (role() == 'owner' || role() == 'editor');
+      }
+
+      // IMPORTANT: allow owner to read even before membership doc is created (bootstrap).
+      allow read: if isMember() || isOwner();
+
+      // Calendar creation: ownerId must be current uid
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isMember() && role() == 'owner';
+
+      match /members/{memberUid} {
+        allow read: if isMember() || isOwner();
+
+        // Bootstrap rule: owner can create their own membership doc right after creating the calendar.
+        allow create: if signedIn()
+          && memberUid == request.auth.uid
+          && get(/databases/$(database)/documents/calendars/$(calendarId)).data.ownerId == request.auth.uid;
+
+        // Owner manages members later
+        allow update, delete: if isMember() && role() == 'owner';
+      }
+
+      match /events/{eventId} {
+        allow read: if isMember() || isOwner();
+        allow create, update, delete: if canWriteEvents() || isOwner();
+      }
     }
   }
 }
