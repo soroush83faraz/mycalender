@@ -12,7 +12,20 @@
           "package_name": "com.example.persian_calendar"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "705027437169-50lffsaaeb5vm2aaqbmak08bdlu2kbm2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.persian_calendar",
+            "certificate_hash": "f03c7bf8d8f7b8889f634a39cf0e2fa8f72e4ced"
+          }
+        },
+        {
+          "client_id": "705027437169-5a5qqem7qtc6up8gmfsjfaahcsg29vdf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBOeaiJ3f3mXVWg14tYlT9ZuKufbHTXvSk"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "705027437169-5a5qqem7qtc6up8gmfsjfaahcsg29vdf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "705027437169-i0r0ddiu2kjpofbvtcaq6njmpn38u461.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.persianCalendar"
+              }
+            }
+          ]
         }
       }
     }
