@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'providers/calendar_provider.dart';
 import 'screens/main_screen.dart';
 import 'services/notification_service.dart';
@@ -14,6 +13,13 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
+  static const List<String> _fontFallbacks = [
+    'NotoNastaliqUrdu',
+    'Segoe UI',
+    'Tahoma',
+    'Arial',
+    'sans-serif',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +56,11 @@ class MyApp extends StatelessWidget {
 
   ThemeData _buildLightTheme(String primaryColorHex) {
     final primaryColor = Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
+    final baseTheme = ThemeData.light(useMaterial3: true);
+    final textTheme = baseTheme.textTheme.apply(
+      fontFamily: 'Roboto',
+      fontFamilyFallback: _fontFallbacks,
+    );
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
@@ -57,7 +68,10 @@ class MyApp extends StatelessWidget {
         seedColor: primaryColor,
         brightness: Brightness.light,
       ),
-      textTheme: GoogleFonts.vazirmatnTextTheme(),
+      fontFamily: 'Roboto',
+      fontFamilyFallback: _fontFallbacks,
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
@@ -77,6 +91,11 @@ class MyApp extends StatelessWidget {
 
   ThemeData _buildDarkTheme(String primaryColorHex) {
     final primaryColor = Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
+    final baseTheme = ThemeData.dark(useMaterial3: true);
+    final textTheme = baseTheme.textTheme.apply(
+      fontFamily: 'Roboto',
+      fontFamilyFallback: _fontFallbacks,
+    );
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
@@ -84,7 +103,10 @@ class MyApp extends StatelessWidget {
         seedColor: primaryColor,
         brightness: Brightness.dark,
       ),
-      textTheme: GoogleFonts.vazirmatnTextTheme(ThemeData.dark().textTheme),
+      fontFamily: 'Roboto',
+      fontFamilyFallback: _fontFallbacks,
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         elevation: 0,
