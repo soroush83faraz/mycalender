@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 import '../models/app_calendar.dart';
+import '../models/calendar_invite.dart';
 import '../models/jalali_date.dart';
 import '../models/event.dart';
 import '../models/holiday.dart';
@@ -37,6 +38,7 @@ class CalendarProvider extends ChangeNotifier {
   int _cloudEventCount = 0;
   bool _selectedCalendarExists = false;
   bool _selectedCalendarMembershipExists = false;
+  String? _activeMembershipRole;
   String? _bootstrappedUid;
 
   StreamSubscription<User?>? _authSubscription;
@@ -61,6 +63,7 @@ class CalendarProvider extends ChangeNotifier {
     }
     return null;
   }
+
   String? get lastFirestoreError => _lastFirestoreError;
   bool get isUsingFirestore => _isUsingFirestore;
   bool get isUsingLocalFallback => _currentUser != null && !_isUsingFirestore;
@@ -71,11 +74,17 @@ class CalendarProvider extends ChangeNotifier {
     if (_currentUser!.isAnonymous) return 'Guest';
     return _currentUser!.email ?? _currentUser!.uid;
   }
+
   int get localEventCount => _localEventCount;
   int get cloudEventCount => _cloudEventCount;
   int get cloudCalendarsCount => _calendars.length;
   bool get selectedCalendarExists => _selectedCalendarExists;
-  bool get selectedCalendarMembershipExists => _selectedCalendarMembershipExists;
+  bool get selectedCalendarMembershipExists =>
+      _selectedCalendarMembershipExists;
+  String? get activeMembershipRole => _activeMembershipRole;
+  bool get canEditActiveCalendarEvents =>
+      _activeMembershipRole == 'owner' || _activeMembershipRole == 'editor';
+  bool get isActiveCalendarOwner => _activeMembershipRole == 'owner';
   bool get hasSelectedCalendar => _selectedCalendarExists;
   String get dataModeStatus =>
       isSignedIn && isUsingFirestore ? 'Cloud (Firestore)' : 'Local fallback';
@@ -84,8 +93,8 @@ class CalendarProvider extends ChangeNotifier {
     return _events.where((event) {
       final eventJalali = JalaliDate.fromGregorian(event.date);
       return eventJalali.year == date.year &&
-             eventJalali.month == date.month &&
-             eventJalali.day == date.day;
+          eventJalali.month == date.month &&
+          eventJalali.day == date.day;
     }).toList();
   }
 
@@ -109,7 +118,8 @@ class CalendarProvider extends ChangeNotifier {
     if (_currentDate.month == 12) {
       _currentDate = JalaliDate(year: _currentDate.year + 1, month: 1, day: 1);
     } else {
-      _currentDate = JalaliDate(year: _currentDate.year, month: _currentDate.month + 1, day: 1);
+      _currentDate = JalaliDate(
+          year: _currentDate.year, month: _currentDate.month + 1, day: 1);
     }
     notifyListeners();
   }
@@ -118,7 +128,8 @@ class CalendarProvider extends ChangeNotifier {
     if (_currentDate.month == 1) {
       _currentDate = JalaliDate(year: _currentDate.year - 1, month: 12, day: 1);
     } else {
-      _currentDate = JalaliDate(year: _currentDate.year, month: _currentDate.month - 1, day: 1);
+      _currentDate = JalaliDate(
+          year: _currentDate.year, month: _currentDate.month - 1, day: 1);
     }
     notifyListeners();
   }
@@ -135,6 +146,9 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> addEvent(Event event) async {
+    if (_currentUser != null && _activeMembershipRole == 'viewer') {
+      throw StateError('You have read-only access to this calendar.');
+    }
     _events.add(event);
     await _localEventStore.saveEvents(_events);
     _localEventCount = _events.length;
@@ -143,6 +157,9 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> updateEvent(Event event) async {
+    if (_currentUser != null && _activeMembershipRole == 'viewer') {
+      throw StateError('You have read-only access to this calendar.');
+    }
     final index = _events.indexWhere((e) => e.id == event.id);
     if (index != -1) {
       _events[index] = event;
@@ -154,6 +171,9 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> deleteEvent(String eventId) async {
+    if (_currentUser != null && _activeMembershipRole == 'viewer') {
+      throw StateError('You have read-only access to this calendar.');
+    }
     final target = _events.cast<Event?>().firstWhere(
           (e) => e?.id == eventId,
           orElse: () => null,
@@ -201,7 +221,79 @@ class CalendarProvider extends ChangeNotifier {
     } else {
       _selectedCalendarExists = false;
       _selectedCalendarMembershipExists = false;
+      _activeMembershipRole = null;
     }
+    notifyListeners();
+  }
+
+  Future<String> createInvite({
+    required String email,
+    required String role,
+  }) async {
+    if (_currentUser == null) {
+      throw StateError('Please sign in to create invites.');
+    }
+    if (_activeCalendarId == null) {
+      throw StateError('No active calendar selected.');
+    }
+    if (!isActiveCalendarOwner) {
+      throw StateError('Only calendar owners can create invites.');
+    }
+    return _firestoreEventStore.createInvite(_activeCalendarId!, email, role);
+  }
+
+  Future<void> revokeInvite(String inviteId) async {
+    if (_currentUser == null) {
+      throw StateError('Please sign in to revoke invites.');
+    }
+    if (_activeCalendarId == null) {
+      throw StateError('No active calendar selected.');
+    }
+    if (!isActiveCalendarOwner) {
+      throw StateError('Only calendar owners can revoke invites.');
+    }
+    await _firestoreEventStore.revokeInvite(_activeCalendarId!, inviteId);
+  }
+
+  Stream<List<CalendarInvite>> watchPendingInvitesForActiveCalendar() {
+    final calendarId = _activeCalendarId;
+    if (calendarId == null || !isActiveCalendarOwner) {
+      return Stream<List<CalendarInvite>>.value(const <CalendarInvite>[]);
+    }
+    return _firestoreEventStore.watchPendingInvites(calendarId);
+  }
+
+  Future<void> acceptInvite(String inviteCode) async {
+    final user = _currentUser;
+    if (user == null) {
+      throw StateError('Please sign in to join shared calendars.');
+    }
+    if (user.isAnonymous) {
+      throw StateError('Please upgrade to Google to join shared calendars.');
+    }
+
+    final beforeCalendarIds = _calendars.map((calendar) => calendar.id).toSet();
+    await _firestoreEventStore.acceptInvite(inviteCode.trim());
+
+    final refreshedCalendars =
+        await _firestoreEventStore.fetchCalendarsForUser(user.uid);
+    _calendars = refreshedCalendars;
+
+    String? joinedCalendarId;
+    for (final calendar in refreshedCalendars) {
+      if (!beforeCalendarIds.contains(calendar.id)) {
+        joinedCalendarId = calendar.id;
+        break;
+      }
+    }
+
+    if (joinedCalendarId != null) {
+      await setActiveCalendar(joinedCalendarId);
+      return;
+    }
+
+    await _refreshSelectedCalendarStatus();
+    await _refreshCloudCountForActiveCalendar();
     notifyListeners();
   }
 
@@ -256,6 +348,7 @@ class CalendarProvider extends ChangeNotifier {
       _localEventCount = _events.length;
       _selectedCalendarExists = false;
       _selectedCalendarMembershipExists = false;
+      _activeMembershipRole = null;
       notifyListeners();
       return;
     }
@@ -301,6 +394,7 @@ class CalendarProvider extends ChangeNotifier {
       _activeCalendarId = null;
       _selectedCalendarExists = false;
       _selectedCalendarMembershipExists = false;
+      _activeMembershipRole = null;
       _bootstrappedUid = null;
       _calendars = <AppCalendar>[];
       _cloudEventCount = 0;
@@ -356,12 +450,14 @@ class CalendarProvider extends ChangeNotifier {
 
   Future<void> _startCalendarWatch(User user) async {
     await _calendarWatchSubscription?.cancel();
-    _calendarWatchSubscription = _firestoreEventStore.watchMyCalendars(user).listen(
+    _calendarWatchSubscription =
+        _firestoreEventStore.watchMyCalendars(user).listen(
       (calendars) async {
         _calendars = calendars;
         if (_calendars.isEmpty) {
           _selectedCalendarExists = false;
           _selectedCalendarMembershipExists = false;
+          _activeMembershipRole = null;
           return;
         }
 
@@ -406,12 +502,18 @@ class CalendarProvider extends ChangeNotifier {
     if (user == null || calendarId == null) {
       _selectedCalendarExists = false;
       _selectedCalendarMembershipExists = false;
+      _activeMembershipRole = null;
       return;
     }
 
-    _selectedCalendarExists = await _firestoreEventStore.calendarExists(calendarId);
+    _selectedCalendarExists =
+        await _firestoreEventStore.calendarExists(calendarId);
     _selectedCalendarMembershipExists =
         await _firestoreEventStore.hasCalendarMembership(
+      calendarId: calendarId,
+      uid: user.uid,
+    );
+    _activeMembershipRole = await _firestoreEventStore.fetchMembershipRole(
       calendarId: calendarId,
       uid: user.uid,
     );
@@ -524,6 +626,7 @@ class CalendarProvider extends ChangeNotifier {
     _isUsingFirestore = false;
     _lastFirestoreError = error.toString();
     _selectedCalendarMembershipExists = false;
+    _activeMembershipRole = null;
     _events = await _localEventStore.loadEvents();
     _localEventCount = _events.length;
     notifyListeners();

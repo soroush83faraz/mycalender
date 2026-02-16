@@ -2,14 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function authEmailLower() {
+      return signedIn() && request.auth.token.email is string
+        ? lower(request.auth.token.email)
+        : '';
+    }
 
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
     match /calendars/{calendarId} {
+      function calendarOwnerId() {
+        return get(/databases/$(database)/documents/calendars/$(calendarId)).data.ownerId;
+      }
       function isOwner() {
-        return signedIn() && resource.data.ownerId == request.auth.uid;
+        return signedIn() && calendarOwnerId() == request.auth.uid;
       }
       function isMember() {
         return signedIn() &&
@@ -20,6 +28,22 @@ service cloud.firestore {
       }
       function canWriteEvents() {
         return isMember() && (role() == 'owner' || role() == 'editor');
+      }
+      function validInviteRole(roleValue) {
+        return roleValue == 'viewer' || roleValue == 'editor';
+      }
+      function inviteDoc(inviteId) {
+        return get(/databases/$(database)/documents/calendars/$(calendarId)/invites/$(inviteId));
+      }
+      function inviteExists(inviteId) {
+        return exists(/databases/$(database)/documents/calendars/$(calendarId)/invites/$(inviteId));
+      }
+      function pendingInvite(inviteData) {
+        return inviteData.status == 'pending'
+          && inviteData.calendarId == calendarId
+          && inviteData.emailLower == authEmailLower()
+          && inviteData.expiresAt is timestamp
+          && inviteData.expiresAt > request.time;
       }
 
       // IMPORTANT: allow owner to read even before membership doc is created (bootstrap).
@@ -35,10 +59,75 @@ service cloud.firestore {
         // Bootstrap rule: owner can create their own membership doc right after creating the calendar.
         allow create: if signedIn()
           && memberUid == request.auth.uid
-          && get(/databases/$(database)/documents/calendars/$(calendarId)).data.ownerId == request.auth.uid;
+          && calendarOwnerId() == request.auth.uid;
+
+        // Invite acceptance: invited user can create their own member doc.
+        allow create: if signedIn()
+          && memberUid == request.auth.uid
+          && request.auth.token.email is string
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email is string
+          && lower(request.resource.data.email) == authEmailLower()
+          && validInviteRole(request.resource.data.role)
+          && request.resource.data.inviteId is string
+          && inviteExists(request.resource.data.inviteId)
+          && pendingInvite(inviteDoc(request.resource.data.inviteId).data)
+          && inviteDoc(request.resource.data.inviteId).data.role == request.resource.data.role;
 
         // Owner manages members later
         allow update, delete: if isMember() && role() == 'owner';
+      }
+
+      match /invites/{inviteId} {
+        // Only owner can create invites.
+        allow create: if isMember()
+          && role() == 'owner'
+          && request.resource.data.keys().hasOnly([
+            'inviteId',
+            'calendarId',
+            'emailLower',
+            'role',
+            'createdBy',
+            'status',
+            'createdAt',
+            'expiresAt',
+          ])
+          && request.resource.data.inviteId == inviteId
+          && request.resource.data.calendarId == calendarId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.emailLower is string
+          && request.resource.data.emailLower == lower(request.resource.data.emailLower)
+          && validInviteRole(request.resource.data.role)
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.expiresAt is timestamp
+          && request.resource.data.expiresAt > request.time;
+
+        // Owner can read all invites in their calendar.
+        // Invitee can read only invites addressed to their email.
+        allow get: if (isMember() && role() == 'owner')
+          || (signedIn() && resource.data.emailLower == authEmailLower());
+        allow list: if (isMember() && role() == 'owner')
+          || (signedIn() && resource.data.emailLower == authEmailLower());
+
+        // Owner can revoke/update invites.
+        // Invitee can only accept their own pending, non-expired invite.
+        allow update: if (isMember() && role() == 'owner')
+          || (
+            signedIn()
+            && resource.data.emailLower == authEmailLower()
+            && pendingInvite(resource.data)
+            && existsAfter(/databases/$(database)/documents/calendars/$(calendarId)/members/$(request.auth.uid))
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              'status',
+              'acceptedAt',
+              'acceptedBy',
+            ])
+            && request.resource.data.status == 'accepted'
+            && request.resource.data.acceptedBy == request.auth.uid
+          );
+
+        allow delete: if isMember() && role() == 'owner';
       }
 
       match /events/{eventId} {

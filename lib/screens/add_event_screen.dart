@@ -11,7 +11,8 @@ class AddEventScreen extends StatefulWidget {
   final JalaliDate? selectedDate;
   final Event? event;
 
-  const AddEventScreen({Key? key, this.selectedDate, this.event}) : super(key: key);
+  const AddEventScreen({Key? key, this.selectedDate, this.event})
+      : super(key: key);
 
   @override
   State<AddEventScreen> createState() => _AddEventScreenState();
@@ -21,7 +22,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  
+
   late DateTime _selectedDateTime;
   String _selectedCategory = 'personal';
   bool _hasReminder = false;
@@ -38,9 +39,11 @@ class _AddEventScreenState extends State<AddEventScreen> {
       _selectedCategory = widget.event!.category;
       _hasReminder = widget.event!.hasReminder;
       _reminderTime = widget.event!.reminderTime;
-      _selectedColor = Color(int.parse(widget.event!.color.replaceFirst('#', '0xFF')));
+      _selectedColor =
+          Color(int.parse(widget.event!.color.replaceFirst('#', '0xFF')));
     } else if (widget.selectedDate != null) {
-      _selectedDateTime = DateConversionService.jalaliToGregorian(widget.selectedDate!);
+      _selectedDateTime =
+          DateConversionService.jalaliToGregorian(widget.selectedDate!);
     } else {
       _selectedDateTime = DateTime.now();
     }
@@ -114,7 +117,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
 
   Widget _buildDateTimeSelector() {
     final jalaliDate = JalaliDate.fromGregorian(_selectedDateTime);
-    
+
     return Card(
       child: ListTile(
         leading: const Icon(Icons.calendar_today),
@@ -200,7 +203,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
                 setState(() {
                   _hasReminder = value;
                   if (value && _reminderTime == null) {
-                    _reminderTime = _selectedDateTime.subtract(const Duration(hours: 1));
+                    _reminderTime =
+                        _selectedDateTime.subtract(const Duration(hours: 1));
                   }
                 });
               },
@@ -248,13 +252,13 @@ class _AddEventScreenState extends State<AddEventScreen> {
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
     );
-    
+
     if (date != null) {
       final time = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
       );
-      
+
       if (time != null) {
         setState(() {
           _selectedDateTime = DateTime(
@@ -297,7 +301,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
         );
       },
     );
-    
+
     if (color != null) {
       setState(() {
         _selectedColor = color;
@@ -308,11 +312,12 @@ class _AddEventScreenState extends State<AddEventScreen> {
   Future<void> _selectReminderTime() async {
     final time = await showTimePicker(
       context: context,
-      initialTime: _reminderTime != null 
-          ? TimeOfDay.fromDateTime(_reminderTime!) 
-          : TimeOfDay.fromDateTime(_selectedDateTime.subtract(const Duration(hours: 1))),
+      initialTime: _reminderTime != null
+          ? TimeOfDay.fromDateTime(_reminderTime!)
+          : TimeOfDay.fromDateTime(
+              _selectedDateTime.subtract(const Duration(hours: 1))),
     );
-    
+
     if (time != null) {
       setState(() {
         _reminderTime = DateTime(
@@ -326,27 +331,36 @@ class _AddEventScreenState extends State<AddEventScreen> {
     }
   }
 
-  void _saveEvent() {
-    if (_formKey.currentState!.validate()) {
-      final event = Event(
-        id: widget.event?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        title: _titleController.text,
-        description: _descriptionController.text,
-        date: _selectedDateTime,
-        category: _selectedCategory,
-        hasReminder: _hasReminder,
-        reminderTime: _reminderTime,
-        color: '#${_selectedColor.value.toRadixString(16).substring(2)}',
-      );
+  Future<void> _saveEvent() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-      final provider = Provider.of<CalendarProvider>(context, listen: false);
+    final event = Event(
+      id: widget.event?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      title: _titleController.text,
+      description: _descriptionController.text,
+      date: _selectedDateTime,
+      category: _selectedCategory,
+      hasReminder: _hasReminder,
+      reminderTime: _reminderTime,
+      color: '#${_selectedColor.value.toRadixString(16).substring(2)}',
+    );
+
+    final provider = Provider.of<CalendarProvider>(context, listen: false);
+    try {
       if (widget.event != null) {
-        provider.updateEvent(event);
+        await provider.updateEvent(event);
       } else {
-        provider.addEvent(event);
+        await provider.addEvent(event);
       }
-
+      if (!mounted) return;
       Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save event: $error')),
+      );
     }
   }
 
@@ -355,18 +369,29 @@ class _AddEventScreenState extends State<AddEventScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('حذف رویداد'),
-        content: const Text('آیا مطمئن هستید که میخواهید این رویداد را حذف کنید؟'),
+        content:
+            const Text('آیا مطمئن هستید که میخواهید این رویداد را حذف کنید؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('لغو'),
           ),
           TextButton(
-            onPressed: () {
-              final provider = Provider.of<CalendarProvider>(context, listen: false);
-              provider.deleteEvent(widget.event!.id);
-              Navigator.pop(context);
-              Navigator.pop(context);
+            onPressed: () async {
+              final provider =
+                  Provider.of<CalendarProvider>(context, listen: false);
+              try {
+                await provider.deleteEvent(widget.event!.id);
+                if (!mounted) return;
+                Navigator.pop(context);
+                Navigator.pop(context);
+              } catch (error) {
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to delete event: $error')),
+                );
+              }
             },
             child: const Text('حذف'),
           ),

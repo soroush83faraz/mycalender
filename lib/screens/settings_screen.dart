@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import '../models/calendar_invite.dart';
 import '../providers/calendar_provider.dart';
 import 'backend_health_check_screen.dart';
+import 'join_calendar_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -29,6 +32,11 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               _buildAccountSection(context, provider),
+              if (provider.isActiveCalendarOwner &&
+                  provider.activeCalendarId != null) ...[
+                const SizedBox(height: 16),
+                const _SharingSection(),
+              ],
               const SizedBox(height: 16),
               _buildThemeSection(context, provider),
               const SizedBox(height: 16),
@@ -84,7 +92,8 @@ class SettingsScreen extends StatelessWidget {
               subtitle: const Text('انتخاب رنگ اصلی اپلیکیشن'),
               leading: CircleAvatar(
                 backgroundColor: Color(
-                  int.parse(provider.settings.primaryColor.replaceFirst('#', '0xFF')),
+                  int.parse(
+                      provider.settings.primaryColor.replaceFirst('#', '0xFF')),
                 ),
                 radius: 12,
               ),
@@ -151,7 +160,8 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNotificationSection(BuildContext context, CalendarProvider provider) {
+  Widget _buildNotificationSection(
+      BuildContext context, CalendarProvider provider) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -179,7 +189,8 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCalendarSection(BuildContext context, CalendarProvider provider) {
+  Widget _buildCalendarSection(
+      BuildContext context, CalendarProvider provider) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -286,7 +297,7 @@ class SettingsScreen extends StatelessWidget {
     Color currentColor = Color(
       int.parse(provider.settings.primaryColor.replaceFirst('#', '0xFF')),
     );
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -310,7 +321,8 @@ class SettingsScreen extends StatelessWidget {
               onPressed: () {
                 provider.updateSettings(
                   provider.settings.copyWith(
-                    primaryColor: '#${tempColor.value.toRadixString(16).substring(2)}',
+                    primaryColor:
+                        '#${tempColor.value.toRadixString(16).substring(2)}',
                   ),
                 );
                 Navigator.pop(context);
@@ -329,7 +341,7 @@ class SettingsScreen extends StatelessWidget {
       'week': 'هفتگی',
       'year': 'سالانه',
     };
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -360,10 +372,24 @@ class SettingsScreen extends StatelessWidget {
 
   void _showLocationSelector(BuildContext context, CalendarProvider provider) {
     const locations = [
-      'تهران', 'مشهد', 'اصفهان', 'شیراز', 'تبریز', 'کرج', 'قم', 'اهواز',
-      'کرمانشاه', 'ارومیه', 'رشت', 'زاهدان', 'همدان', 'کرمان', 'یزد', 'اردبیل'
+      'تهران',
+      'مشهد',
+      'اصفهان',
+      'شیراز',
+      'تبریز',
+      'کرج',
+      'قم',
+      'اهواز',
+      'کرمانشاه',
+      'ارومیه',
+      'رشت',
+      'زاهدان',
+      'همدان',
+      'کرمان',
+      'یزد',
+      'اردبیل'
     ];
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -437,6 +463,22 @@ class SettingsScreen extends StatelessWidget {
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () => _handleUpgradeToGoogle(context, provider),
               ),
+            if (provider.isSignedIn && !provider.isGuestUser)
+              ListTile(
+                leading: const Icon(Icons.group_add),
+                title: const Text('Join calendar'),
+                subtitle:
+                    const Text('Enter invite code and join a shared calendar'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const JoinCalendarScreen(),
+                    ),
+                  );
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Sign out'),
@@ -493,7 +535,8 @@ class SettingsScreen extends StatelessWidget {
 
     try {
       final result = await provider.upgradeToGoogle(
-        onExistingAccountConfirm: () => _showExistingAccountWarningDialog(context),
+        onExistingAccountConfirm: () =>
+            _showExistingAccountWarningDialog(context),
       );
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
@@ -516,7 +559,8 @@ class SettingsScreen extends StatelessWidget {
 
       if (result.cancelledByUser) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upgrade cancelled. You are still in Guest mode.')),
+          const SnackBar(
+              content: Text('Upgrade cancelled. You are still in Guest mode.')),
         );
         return;
       }
@@ -524,7 +568,8 @@ class SettingsScreen extends StatelessWidget {
       if (result.signedIntoExistingAccount) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Signed in to existing Google account. Guest data was not merged.'),
+            content: Text(
+                'Signed in to existing Google account. Guest data was not merged.'),
           ),
         );
       } else {
@@ -635,5 +680,263 @@ class SettingsScreen extends StatelessWidget {
     }
 
     return 'Upgrade failed: $error';
+  }
+}
+
+class _SharingSection extends StatefulWidget {
+  const _SharingSection();
+
+  @override
+  State<_SharingSection> createState() => _SharingSectionState();
+}
+
+class _SharingSectionState extends State<_SharingSection> {
+  final TextEditingController _emailController = TextEditingController();
+  String _selectedRole = 'viewer';
+  bool _isCreating = false;
+  String? _latestInviteCode;
+  String? _revokingInviteId;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<CalendarProvider>(
+      builder: (context, provider, child) {
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sharing',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Invite email',
+                    hintText: 'user@example.com',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'viewer', child: Text('viewer')),
+                    DropdownMenuItem(value: 'editor', child: Text('editor')),
+                  ],
+                  onChanged: _isCreating
+                      ? null
+                      : (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _selectedRole = value;
+                          });
+                        },
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isCreating
+                        ? null
+                        : () => _createInvite(context, provider),
+                    child: Text(
+                      _isCreating ? 'Creating...' : 'Create invite',
+                    ),
+                  ),
+                ),
+                if (_latestInviteCode != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.vpn_key),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SelectableText(
+                            _latestInviteCode!,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy),
+                          tooltip: 'Copy code',
+                          onPressed: () =>
+                              _copyInviteCode(context, _latestInviteCode!),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text(
+                  'Pending invites',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                StreamBuilder<List<CalendarInvite>>(
+                  stream: provider.watchPendingInvitesForActiveCalendar(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return Text('Failed to load invites: ${snapshot.error}');
+                    }
+
+                    final invites = snapshot.data ?? const <CalendarInvite>[];
+                    if (invites.isEmpty) {
+                      return const Text('No pending invites.');
+                    }
+
+                    return Column(
+                      children: invites.map((invite) {
+                        final isRevoking = _revokingInviteId == invite.inviteId;
+                        final expiresText = invite.expiresAt == null
+                            ? '-'
+                            : _formatShortDate(invite.expiresAt!);
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.mark_email_unread_outlined),
+                          title: Text(invite.emailLower),
+                          subtitle: Text(
+                              'Role: ${invite.role}  Expires: $expiresText'),
+                          trailing: IconButton(
+                            tooltip: 'Revoke invite',
+                            icon: isRevoking
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.block),
+                            onPressed: isRevoking
+                                ? null
+                                : () => _revokeInvite(
+                                    context, provider, invite.inviteId),
+                          ),
+                        );
+                      }).toList(growable: false),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _createInvite(
+    BuildContext context,
+    CalendarProvider provider,
+  ) async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an email address.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isCreating = true;
+    });
+    try {
+      final inviteCode = await provider.createInvite(
+        email: email,
+        role: _selectedRole,
+      );
+      if (!mounted) return;
+      setState(() {
+        _latestInviteCode = inviteCode;
+      });
+      _emailController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Invite created. Share the code manually.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create invite: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreating = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _revokeInvite(
+    BuildContext context,
+    CalendarProvider provider,
+    String inviteId,
+  ) async {
+    setState(() {
+      _revokingInviteId = inviteId;
+    });
+    try {
+      await provider.revokeInvite(inviteId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invite revoked.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to revoke invite: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _revokingInviteId = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _copyInviteCode(BuildContext context, String inviteCode) async {
+    await Clipboard.setData(ClipboardData(text: inviteCode));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Invite code copied.')),
+    );
+  }
+
+  String _formatShortDate(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    return '${local.year}-$month-$day';
   }
 }

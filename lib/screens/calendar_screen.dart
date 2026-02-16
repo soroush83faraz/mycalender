@@ -83,9 +83,12 @@ class CalendarScreen extends StatelessWidget {
                   icon: const Icon(Icons.view_module, color: Colors.white),
                   onSelected: provider.setView,
                   itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'month', child: Text('نمای ماهانه')),
-                    const PopupMenuItem(value: 'week', child: Text('نمای هفتگی')),
-                    const PopupMenuItem(value: 'year', child: Text('نمای سالانه')),
+                    const PopupMenuItem(
+                        value: 'month', child: Text('نمای ماهانه')),
+                    const PopupMenuItem(
+                        value: 'week', child: Text('نمای هفتگی')),
+                    const PopupMenuItem(
+                        value: 'year', child: Text('نمای سالانه')),
                   ],
                 ),
               ],
@@ -157,7 +160,10 @@ class CalendarScreen extends StatelessWidget {
                   CalendarUtils.toPersianNumber(provider.currentDate.year),
                   style: TextStyle(
                     fontSize: 14,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.7),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onPrimaryContainer
+                        .withOpacity(0.7),
                   ),
                 ),
               if (provider.currentView == 'year')
@@ -208,7 +214,8 @@ class CalendarScreen extends StatelessWidget {
     switch (provider.currentView) {
       case 'week':
         return () {
-          final currentGregorian = CalendarUtils.toGregorian(provider.selectedDate ?? provider.currentDate);
+          final currentGregorian = CalendarUtils.toGregorian(
+              provider.selectedDate ?? provider.currentDate);
           final nextWeek = currentGregorian.add(const Duration(days: 7));
           final nextWeekJalali = JalaliDate.fromGregorian(nextWeek);
           provider.setCurrentDate(nextWeekJalali);
@@ -234,8 +241,10 @@ class CalendarScreen extends StatelessWidget {
     switch (provider.currentView) {
       case 'week':
         return () {
-          final currentGregorian = CalendarUtils.toGregorian(provider.selectedDate ?? provider.currentDate);
-          final previousWeek = currentGregorian.subtract(const Duration(days: 7));
+          final currentGregorian = CalendarUtils.toGregorian(
+              provider.selectedDate ?? provider.currentDate);
+          final previousWeek =
+              currentGregorian.subtract(const Duration(days: 7));
           final previousWeekJalali = JalaliDate.fromGregorian(previousWeek);
           provider.setCurrentDate(previousWeekJalali);
           if (provider.selectedDate != null) {
@@ -272,7 +281,8 @@ class CalendarScreen extends StatelessWidget {
           onDaySelected: (year, month, day) {
             final selectedDate = JalaliDate(year: year, month: month, day: day);
             provider.setSelectedDate(selectedDate);
-            provider.setCurrentDate(JalaliDate(year: year, month: month, day: 1));
+            provider
+                .setCurrentDate(JalaliDate(year: year, month: month, day: 1));
           },
           events: provider.events,
           holidays: Holiday.getPersianHolidays(),
@@ -282,7 +292,8 @@ class CalendarScreen extends StatelessWidget {
           year: provider.currentDate.year,
           selectedDate: provider.selectedDate,
           onMonthSelected: (year, month) {
-            provider.setCurrentDate(JalaliDate(year: year, month: month, day: 1));
+            provider
+                .setCurrentDate(JalaliDate(year: year, month: month, day: 1));
             provider.setView('month');
           },
           events: provider.events,
@@ -308,7 +319,8 @@ class CalendarScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildSelectedDateInfo(BuildContext context, CalendarProvider provider) {
+  Widget _buildSelectedDateInfo(
+      BuildContext context, CalendarProvider provider) {
     final selectedDate = provider.selectedDate!;
     final events = provider.getEventsForDate(selectedDate);
     final holidays = provider.getHolidaysForDate(selectedDate);
@@ -351,42 +363,51 @@ class CalendarScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     JalaliDate.getWeekdayName(
-                      CalendarUtils.getFirstDayOfMonth(selectedDate.year, selectedDate.month) + selectedDate.day - 1,
+                      CalendarUtils.getFirstDayOfMonth(
+                              selectedDate.year, selectedDate.month) +
+                          selectedDate.day -
+                          1,
                     ),
                     style: TextStyle(
                       fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          if (holidays.isNotEmpty)
-            HolidayWidget(holidays: holidays),
-          if (events.isNotEmpty)
-            EventListWidget(events: events),
+          if (holidays.isNotEmpty) HolidayWidget(holidays: holidays),
+          if (events.isNotEmpty) EventListWidget(events: events),
         ],
       ),
     );
   }
 
-  Widget _buildFloatingActionButtons(BuildContext context, CalendarProvider provider) {
+  Widget _buildFloatingActionButtons(
+      BuildContext context, CalendarProvider provider) {
+    final canEdit = provider.activeMembershipRole != 'viewer';
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
           heroTag: 'add_event',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AddEventScreen(
-                  selectedDate: provider.selectedDate,
-                ),
-              ),
-            );
-          },
+          onPressed: canEdit
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddEventScreen(
+                        selectedDate: provider.selectedDate,
+                      ),
+                    ),
+                  );
+                }
+              : null,
+          tooltip: canEdit ? null : 'Viewer access: cannot add events',
           child: const Icon(Icons.add),
         ),
         const SizedBox(height: 16),

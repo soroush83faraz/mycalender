@@ -22,7 +22,8 @@ class _EventsScreenState extends State<EventsScreen> {
     return Consumer<CalendarProvider>(
       builder: (context, provider, child) {
         final filteredEvents = _getFilteredEvents(provider.events);
-        
+        final canEdit = provider.activeMembershipRole != 'viewer';
+
         return Scaffold(
           appBar: AppBar(
             title: const Text('رویدادها'),
@@ -46,14 +47,17 @@ class _EventsScreenState extends State<EventsScreen> {
                   },
                 ),
           floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddEventScreen(),
-                ),
-              );
-            },
+            onPressed: canEdit
+                ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddEventScreen(),
+                      ),
+                    );
+                  }
+                : null,
+            tooltip: canEdit ? null : 'Viewer access: cannot add events',
             child: const Icon(Icons.add),
           ),
         );
@@ -152,7 +156,7 @@ class _EventsScreenState extends State<EventsScreen> {
     final jalaliDate = JalaliDate.fromGregorian(event.date);
     final isUpcoming = event.date.isAfter(DateTime.now());
     final daysDifference = event.date.difference(DateTime.now()).inDays;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -173,7 +177,8 @@ class _EventsScreenState extends State<EventsScreen> {
                 width: 4,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Color(int.parse(event.color.replaceFirst('#', '0xFF'))),
+                  color:
+                      Color(int.parse(event.color.replaceFirst('#', '0xFF'))),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -206,7 +211,10 @@ class _EventsScreenState extends State<EventsScreen> {
                       '${CalendarUtils.toPersianNumber(jalaliDate.day)} ${jalaliDate.getMonthName()} ${CalendarUtils.toPersianNumber(jalaliDate.year)}',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.7),
                       ),
                     ),
                     if (event.description.isNotEmpty) ...[
@@ -215,7 +223,10 @@ class _EventsScreenState extends State<EventsScreen> {
                         event.description,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.5),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -224,7 +235,8 @@ class _EventsScreenState extends State<EventsScreen> {
                     if (isUpcoming && daysDifference >= 0) ...[
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: daysDifference == 0
                               ? Colors.red.withOpacity(0.1)
@@ -264,10 +276,14 @@ class _EventsScreenState extends State<EventsScreen> {
                     ),
                   ),
                   Text(
-                    CalendarUtils.toPersianNumber(event.date.minute.toString().padLeft(2, '0')),
+                    CalendarUtils.toPersianNumber(
+                        event.date.minute.toString().padLeft(2, '0')),
                     style: TextStyle(
                       fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -284,16 +300,16 @@ class _EventsScreenState extends State<EventsScreen> {
       final matchesSearch = _searchQuery.isEmpty ||
           event.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           event.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      
-      final matchesCategory = _selectedCategory == 'all' ||
-          event.category == _selectedCategory;
-      
+
+      final matchesCategory =
+          _selectedCategory == 'all' || event.category == _selectedCategory;
+
       return matchesSearch && matchesCategory;
     }).toList();
-    
+
     // Sort by date
     filtered.sort((a, b) => a.date.compareTo(b.date));
-    
+
     return filtered;
   }
 }
