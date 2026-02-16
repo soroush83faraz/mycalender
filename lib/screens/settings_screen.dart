@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../providers/calendar_provider.dart';
@@ -27,6 +28,8 @@ class SettingsScreen extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              _buildAccountSection(context, provider),
+              const SizedBox(height: 16),
               _buildThemeSection(context, provider),
               const SizedBox(height: 16),
               _buildDisplaySection(context, provider),
@@ -273,22 +276,6 @@ class SettingsScreen extends StatelessWidget {
                 );
               },
             ),
-            Consumer<CalendarProvider>(
-              builder: (context, provider, child) {
-                return ListTile(
-                  title: const Text('Sign Out'),
-                  subtitle: Text(
-                    provider.currentUser?.email ?? 'Signed in user session',
-                  ),
-                  leading: const Icon(Icons.logout),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  enabled: provider.isSignedIn,
-                  onTap: provider.isSignedIn
-                      ? () => _confirmSignOut(context, provider)
-                      : null,
-                );
-              },
-            ),
           ],
         ),
       ),
@@ -425,6 +412,44 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildAccountSection(BuildContext context, CalendarProvider provider) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Account',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Status'),
+              subtitle: Text(provider.accountStatusLabel),
+            ),
+            if (provider.isGuestUser)
+              ListTile(
+                leading: const Icon(Icons.upgrade),
+                title: const Text('Upgrade to Google'),
+                subtitle: const Text('Link this Guest account to Google'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () => _handleUpgradeToGoogle(context, provider),
+              ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Sign out'),
+              subtitle: const Text('Sign out'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => _confirmSignOut(context, provider),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmSignOut(
     BuildContext context,
     CalendarProvider provider,
@@ -459,6 +484,124 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _handleUpgradeToGoogle(
+    BuildContext context,
+    CalendarProvider provider,
+  ) async {
+    final previousUid = provider.currentUser?.uid;
+    _showUpgradeProgress(context);
+
+    try {
+      final result = await provider.upgradeToGoogle(
+        onExistingAccountConfirm: () => _showExistingAccountWarningDialog(context),
+      );
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!context.mounted) return;
+
+      if (result.redirectStarted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Redirecting to Google...')),
+        );
+        return;
+      }
+
+      if (result.alreadySignedIn) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Already signed in with Google.')),
+        );
+        return;
+      }
+
+      if (result.cancelledByUser) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Upgrade cancelled. You are still in Guest mode.')),
+        );
+        return;
+      }
+
+      if (result.signedIntoExistingAccount) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Signed in to existing Google account. Guest data was not merged.'),
+          ),
+        );
+      } else {
+        final currentUid = provider.currentUser?.uid;
+        final linkedSameUid = previousUid != null && previousUid == currentUid;
+        debugPrint(
+          'Google upgrade UID check: before=$previousUid after=$currentUid '
+          'sameUid=$linkedSameUid',
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              linkedSameUid
+                  ? 'Upgraded to Google account. UID unchanged.'
+                  : 'Upgraded to Google account.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_formatUpgradeError(error))),
+      );
+    }
+  }
+
+  void _showUpgradeProgress(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Flexible(child: Text('Upgrading account...')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _showExistingAccountWarningDialog(BuildContext context) async {
+    final decision = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Account Already Exists'),
+        content: const Text(
+          'This Google account is already registered.\n'
+          'If you continue, your current guest data will not be saved to that account.\n'
+          'To keep your guest data, sign in with a new Google account.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    return decision ?? false;
+  }
+
   String _getViewName(String view) {
     switch (view) {
       case 'month':
@@ -470,5 +613,27 @@ class SettingsScreen extends StatelessWidget {
       default:
         return 'ماهانه';
     }
+  }
+
+  String _formatUpgradeError(Object error) {
+    if (error is FirebaseAuthException) {
+      final message = error.message;
+      if (message != null && message.isNotEmpty) {
+        return message;
+      }
+
+      switch (error.code) {
+        case 'credential-already-in-use':
+          return 'This Google account is already linked to another account.';
+        case 'account-exists-with-different-credential':
+          return 'An account already exists with a different sign-in method.';
+        case 'network-request-failed':
+          return 'Network error. Please check your connection and try again.';
+        default:
+          return 'Google upgrade failed (${error.code}). Please try again.';
+      }
+    }
+
+    return 'Upgrade failed: $error';
   }
 }

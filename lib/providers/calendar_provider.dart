@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -11,10 +10,9 @@ import '../models/holiday.dart';
 import '../models/settings.dart';
 import '../repositories/firestore_event_store.dart';
 import '../repositories/local_event_store.dart';
+import '../services/auth_service.dart';
 
 class CalendarProvider extends ChangeNotifier {
-  static bool _googleSignInInitialized = false;
-
   CalendarProvider({
     LocalEventStore? localEventStore,
     FirestoreEventStore? firestoreEventStore,
@@ -67,6 +65,12 @@ class CalendarProvider extends ChangeNotifier {
   bool get isUsingFirestore => _isUsingFirestore;
   bool get isUsingLocalFallback => _currentUser != null && !_isUsingFirestore;
   bool get isSignedIn => _currentUser != null;
+  bool get isGuestUser => _currentUser?.isAnonymous ?? false;
+  String get accountStatusLabel {
+    if (_currentUser == null) return 'Not signed in';
+    if (_currentUser!.isAnonymous) return 'Guest';
+    return _currentUser!.email ?? _currentUser!.uid;
+  }
   int get localEventCount => _localEventCount;
   int get cloudEventCount => _cloudEventCount;
   int get cloudCalendarsCount => _calendars.length;
@@ -269,14 +273,19 @@ class CalendarProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<AuthUpgradeResult> upgradeToGoogle({
+    Future<bool> Function()? onExistingAccountConfirm,
+  }) async {
+    final result = await AuthService.instance.upgradeToGoogle(
+      onExistingAccountConfirm: onExistingAccountConfirm,
+    );
+    _currentUser = FirebaseAuth.instance.currentUser;
+    notifyListeners();
+    return result;
+  }
+
   Future<void> signOutCurrentUser() async {
-    try {
-      if (!kIsWeb) {
-        await _safeGoogleSignOut();
-      }
-    } finally {
-      await FirebaseAuth.instance.signOut();
-    }
+    await AuthService.instance.signOut();
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
@@ -508,18 +517,6 @@ class CalendarProvider extends ChangeNotifier {
     } catch (error) {
       _isUsingFirestore = false;
       _lastFirestoreError = error.toString();
-    }
-  }
-
-  Future<void> _safeGoogleSignOut() async {
-    try {
-      if (!_googleSignInInitialized) {
-        await GoogleSignIn.instance.initialize();
-        _googleSignInInitialized = true;
-      }
-      await GoogleSignIn.instance.signOut();
-    } catch (_) {
-      // Best effort only. FirebaseAuth sign-out still runs.
     }
   }
 

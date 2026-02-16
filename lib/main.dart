@@ -5,8 +5,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'providers/calendar_provider.dart';
-import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'screens/welcome_screen.dart';
+import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -14,6 +15,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await AuthService.instance.handleRedirectResult();
   await NotificationService.initialize();
   runApp(const MyApp());
 }
@@ -141,7 +143,7 @@ class AuthGate extends StatelessWidget {
         }
 
         final user = snapshot.data;
-        return user != null ? const MainScreen() : const LoginScreen();
+        return user == null ? const WelcomeScreen() : const MainScreen();
       },
     );
   }
