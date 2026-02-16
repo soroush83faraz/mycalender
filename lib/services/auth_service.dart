@@ -67,68 +67,33 @@ class AuthService {
       );
     }
 
+    final shouldContinue = onExistingAccountConfirm == null
+        ? true
+        : await _confirmExistingAccountSwitch(onExistingAccountConfirm);
+    if (!shouldContinue) {
+      return const AuthUpgradeResult(
+        signedIntoExistingAccount: false,
+        cancelledByUser: true,
+      );
+    }
+
+    // No merge path: discard guest auth state and sign in with Google.
+    await _auth.signOut();
+
     if (kIsWeb) {
       final provider = GoogleAuthProvider();
-      try {
-        final linked = await user.linkWithPopup(provider);
-        return AuthUpgradeResult(
-          credential: linked,
-          signedIntoExistingAccount: false,
-        );
-      } on FirebaseAuthException catch (error) {
-        if (_isPopupBlockedError(error.code)) {
-          await user.linkWithRedirect(provider);
-          return const AuthUpgradeResult(
-            signedIntoExistingAccount: false,
-            redirectStarted: true,
-          );
-        }
-        if (_isExistingAccountError(error.code)) {
-          final shouldContinue = await _confirmExistingAccountSwitch(
-            onExistingAccountConfirm,
-          );
-          if (!shouldContinue) {
-            return const AuthUpgradeResult(
-              signedIntoExistingAccount: false,
-              cancelledByUser: true,
-            );
-          }
-          return _signInWithPopupOrRedirect(
-            provider,
-            signedIntoExistingAccount: true,
-          );
-        }
-        rethrow;
-      }
+      return _signInWithPopupOrRedirect(
+        provider,
+        signedIntoExistingAccount: true,
+      );
     }
 
     final googleCredential = await _getGoogleCredentialForNative();
-    try {
-      final linked = await user.linkWithCredential(googleCredential);
-      return AuthUpgradeResult(
-        credential: linked,
-        signedIntoExistingAccount: false,
-      );
-    } on FirebaseAuthException catch (error) {
-      if (_isExistingAccountError(error.code)) {
-        final shouldContinue = await _confirmExistingAccountSwitch(
-          onExistingAccountConfirm,
-        );
-        if (!shouldContinue) {
-          return const AuthUpgradeResult(
-            signedIntoExistingAccount: false,
-            cancelledByUser: true,
-          );
-        }
-
-        final signedIn = await _auth.signInWithCredential(googleCredential);
-        return AuthUpgradeResult(
-          credential: signedIn,
-          signedIntoExistingAccount: true,
-        );
-      }
-      rethrow;
-    }
+    final signedIn = await _auth.signInWithCredential(googleCredential);
+    return AuthUpgradeResult(
+      credential: signedIn,
+      signedIntoExistingAccount: true,
+    );
   }
 
   Future<AuthUpgradeResult> upgradeToGoogle({
@@ -167,6 +132,15 @@ class AuthService {
     await _auth.signOut();
   }
 
+  Future<User?> continueAsGuest() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser != null && currentUser.isAnonymous) {
+      return currentUser;
+    }
+    final credential = await _auth.signInAnonymously();
+    return credential.user;
+  }
+
   Future<AuthCredential> _getGoogleCredentialForNative() async {
     await _ensureGoogleInitializedForNative();
     final account = await GoogleSignIn.instance.authenticate(
@@ -195,11 +169,6 @@ class AuthService {
 
   bool _isPopupBlockedError(String code) {
     return code == 'popup-blocked' || code == 'popup-closed-by-user';
-  }
-
-  bool _isExistingAccountError(String code) {
-    return code == 'credential-already-in-use' ||
-        code == 'account-exists-with-different-credential';
   }
 
   Future<bool> _confirmExistingAccountSwitch(

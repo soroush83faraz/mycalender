@@ -722,7 +722,7 @@ class _SharingSectionState extends State<_SharingSection> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    labelText: 'Invite email',
+                    labelText: 'Invite email (optional)',
                     hintText: 'user@example.com',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.email),
@@ -859,12 +859,6 @@ class _SharingSectionState extends State<_SharingSection> {
     CalendarProvider provider,
   ) async {
     final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an email address.')),
-      );
-      return;
-    }
 
     setState(() {
       _isCreating = true;

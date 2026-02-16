@@ -1,6 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/calendar_provider.dart';
 import '../services/auth_service.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -16,6 +17,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   Future<void> _continueWithGoogle() async {
     if (_isLoading) return;
+    final provider = context.read<CalendarProvider>();
+    if (provider.isGuestUiLoggedOut) {
+      final shouldContinue = await _confirmGuestDiscardWarning();
+      if (!shouldContinue) {
+        return;
+      }
+    }
     setState(() {
       _isLoading = true;
       _error = null;
@@ -42,6 +50,29 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  Future<bool> _confirmGuestDiscardWarning() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Continue with Google'),
+        content: const Text(
+          'Guest calendars and events will stay in Guest mode and will not be moved to Google.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   Future<void> _continueAsGuest() async {
     if (_isLoading) return;
     setState(() {
@@ -50,7 +81,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     });
 
     try {
-      await FirebaseAuth.instance.signInAnonymously();
+      await context.read<CalendarProvider>().continueAsGuest();
     } catch (error) {
       if (!mounted) return;
       setState(() {

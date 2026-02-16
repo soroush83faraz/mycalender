@@ -93,6 +93,17 @@ class _JoinCalendarScreenState extends State<JoinCalendarScreen> {
                     ),
                   ),
                 ),
+              if (provider.isGuestUser) ...[
+                const SizedBox(height: 12),
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      'Guest calendars are local to guest mode. Signing in with Google won\'t bring them over.',
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Card(
                 child: Padding(
@@ -108,10 +119,36 @@ class _JoinCalendarScreenState extends State<JoinCalendarScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
+                      if (provider.lastFirestoreError != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .errorContainer
+                                .withOpacity(0.35),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Failed to load calendars: ${provider.lastFirestoreError}',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       if (provider.calendars.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text('No calendars found.'),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            provider.isGuestUser
+                                ? 'No calendars found in guest mode.'
+                                : 'No calendars yet. Create one or join with a code.',
+                          ),
                         )
                       else
                         Column(

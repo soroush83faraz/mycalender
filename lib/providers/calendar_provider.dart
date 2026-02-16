@@ -14,6 +14,8 @@ import '../repositories/local_event_store.dart';
 import '../services/auth_service.dart';
 
 class CalendarProvider extends ChangeNotifier {
+  static const String _guestUiLoggedOutKey = 'guest_ui_logged_out';
+
   CalendarProvider({
     LocalEventStore? localEventStore,
     FirestoreEventStore? firestoreEventStore,
@@ -40,6 +42,7 @@ class CalendarProvider extends ChangeNotifier {
   bool _selectedCalendarMembershipExists = false;
   String? _activeMembershipRole;
   String? _bootstrappedUid;
+  bool _guestUiLoggedOut = false;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<List<Event>>? _cloudEventsSubscription;
@@ -66,9 +69,11 @@ class CalendarProvider extends ChangeNotifier {
 
   String? get lastFirestoreError => _lastFirestoreError;
   bool get isUsingFirestore => _isUsingFirestore;
+  bool get isInitialized => _isInitialized;
   bool get isUsingLocalFallback => _currentUser != null && !_isUsingFirestore;
   bool get isSignedIn => _currentUser != null;
   bool get isGuestUser => _currentUser?.isAnonymous ?? false;
+  bool get isGuestUiLoggedOut => _guestUiLoggedOut;
   String get accountStatusLabel {
     if (_currentUser == null) return 'Not signed in';
     if (_currentUser!.isAnonymous) return 'Guest';
@@ -196,6 +201,7 @@ class CalendarProvider extends ChangeNotifier {
     _events = await _localEventStore.loadEvents();
     _localEventCount = _events.length;
     await _loadSettings();
+    await _loadGuestUiLogoutState();
     _currentUser = FirebaseAuth.instance.currentUser;
 
     _authSubscription?.cancel();
@@ -378,30 +384,65 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> signOutCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.isAnonymous) {
+      _guestUiLoggedOut = true;
+      await _saveGuestUiLogoutState();
+      await _applyUiSignedOutState();
+      notifyListeners();
+      return;
+    }
+
+    _guestUiLoggedOut = false;
+    await _saveGuestUiLogoutState();
     await AuthService.instance.signOut();
   }
 
+  Future<void> continueAsGuest() async {
+    final wasGuestUiLoggedOut = _guestUiLoggedOut;
+    _guestUiLoggedOut = false;
+    await _saveGuestUiLogoutState();
+    final user = await AuthService.instance.continueAsGuest();
+    if (user != null && user.isAnonymous && wasGuestUiLoggedOut) {
+      await _onAuthStateChanged(user);
+      return;
+    }
+    notifyListeners();
+  }
+
   Future<void> _onAuthStateChanged(User? user) async {
-    _currentUser = user;
     _lastFirestoreError = null;
     await _cloudEventsSubscription?.cancel();
     _cloudEventsSubscription = null;
     await _calendarWatchSubscription?.cancel();
     _calendarWatchSubscription = null;
 
+    if (kDebugMode) {
+      debugPrint(
+        '[Auth] state changed uid=${user?.uid ?? '(null)'} '
+        'isAnonymous=${user?.isAnonymous ?? false} '
+        'guestUiLoggedOut=$_guestUiLoggedOut',
+      );
+    }
+
     if (user == null) {
-      _isUsingFirestore = false;
-      _activeCalendarId = null;
-      _selectedCalendarExists = false;
-      _selectedCalendarMembershipExists = false;
-      _activeMembershipRole = null;
-      _bootstrappedUid = null;
-      _calendars = <AppCalendar>[];
-      _cloudEventCount = 0;
-      _events = await _localEventStore.loadEvents();
-      _localEventCount = _events.length;
+      _guestUiLoggedOut = false;
+      await _saveGuestUiLogoutState();
+      await _applyUiSignedOutState();
       notifyListeners();
       return;
+    }
+
+    if (user.isAnonymous && _guestUiLoggedOut) {
+      await _applyUiSignedOutState();
+      notifyListeners();
+      return;
+    }
+
+    _currentUser = user;
+    if (!user.isAnonymous && _guestUiLoggedOut) {
+      _guestUiLoggedOut = false;
+      await _saveGuestUiLogoutState();
     }
 
     try {
@@ -415,7 +456,6 @@ class CalendarProvider extends ChangeNotifier {
       }
 
       await _startCalendarWatch(user);
-      await _syncLocalToCloudOnSignIn(user.uid, selectedCalendarId);
       await _refreshCloudCountForActiveCalendar();
       _subscribeToCloudEvents(selectedCalendarId);
       _isUsingFirestore = true;
@@ -453,6 +493,7 @@ class CalendarProvider extends ChangeNotifier {
     _calendarWatchSubscription =
         _firestoreEventStore.watchMyCalendars(user).listen(
       (calendars) async {
+        _lastFirestoreError = null;
         _calendars = calendars;
         if (_calendars.isEmpty) {
           _selectedCalendarExists = false;
@@ -540,35 +581,6 @@ class CalendarProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> _syncLocalToCloudOnSignIn(
-    String uid,
-    String calendarId,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final migrationKey = 'cloud_migrated_$uid';
-    final migrated = prefs.getBool(migrationKey) ?? false;
-
-    final localEvents = await _localEventStore.loadEvents();
-    final syncedEvents = <Event>[];
-
-    for (final event in localEvents) {
-      final synced = await _firestoreEventStore.upsertEvent(
-        calendarId: calendarId,
-        event: event,
-      );
-      syncedEvents.add(synced);
-    }
-
-    await _localEventStore.saveEvents(syncedEvents);
-    _events = syncedEvents;
-    _localEventCount = syncedEvents.length;
-    _cloudEventCount = syncedEvents.length;
-
-    if (!migrated) {
-      await prefs.setBool(migrationKey, true);
-    }
-  }
-
   Future<void> _upsertCloudEvent(Event event) async {
     final user = _currentUser;
     final calendarId = _activeCalendarId;
@@ -632,6 +644,24 @@ class CalendarProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _applyUiSignedOutState() async {
+    await _cloudEventsSubscription?.cancel();
+    _cloudEventsSubscription = null;
+    await _calendarWatchSubscription?.cancel();
+    _calendarWatchSubscription = null;
+    _currentUser = null;
+    _isUsingFirestore = false;
+    _activeCalendarId = null;
+    _selectedCalendarExists = false;
+    _selectedCalendarMembershipExists = false;
+    _activeMembershipRole = null;
+    _bootstrappedUid = null;
+    _calendars = <AppCalendar>[];
+    _cloudEventCount = 0;
+    _events = await _localEventStore.loadEvents();
+    _localEventCount = _events.length;
+  }
+
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('settings', json.encode(_settings.toJson()));
@@ -643,6 +673,16 @@ class CalendarProvider extends ChangeNotifier {
     if (settingsString != null) {
       _settings = AppSettings.fromJson(json.decode(settingsString));
     }
+  }
+
+  Future<void> _saveGuestUiLogoutState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_guestUiLoggedOutKey, _guestUiLoggedOut);
+  }
+
+  Future<void> _loadGuestUiLogoutState() async {
+    final prefs = await SharedPreferences.getInstance();
+    _guestUiLoggedOut = prefs.getBool(_guestUiLoggedOutKey) ?? false;
   }
 
   @override

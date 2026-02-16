@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/app_calendar.dart';
 import '../models/calendar_invite.dart';
@@ -17,6 +19,7 @@ class FirestoreEventStore {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
   static const Duration _inviteLifetime = Duration(days: 7);
+  static const _inviteCodeAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   Future<void> ensureUserDocument(User user) async {
     final userRef = _firestore.collection('users').doc(user.uid);
@@ -42,31 +45,64 @@ class FirestoreEventStore {
 
     final calendarId = user.uid;
     final calendarRef = _firestore.collection('calendars').doc(calendarId);
+    final memberRef = calendarRef.collection('members').doc(user.uid);
+    var createdCalendar = false;
+    var createdMember = false;
+
     try {
-      await calendarRef.set({
+      await calendarRef.update({
         'ownerId': user.uid,
         'title': 'My Calendar',
         'color': 'blue',
-        'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      });
     } on FirebaseException catch (error) {
-      // If the calendar exists but membership isn't created yet, this update
-      // can be denied by rules. Membership creation below is still allowed for owner.
-      if (error.code != 'permission-denied') {
+      if (_isNotFound(error)) {
+        await calendarRef.set({
+          'ownerId': user.uid,
+          'title': 'My Calendar',
+          'color': 'blue',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        createdCalendar = true;
+      } else if (error.code != 'permission-denied') {
         rethrow;
       }
     }
 
-    final memberRef = calendarRef.collection('members').doc(user.uid);
-    await memberRef.set({
-      'uid': user.uid,
-      'role': 'owner',
-      'email': user.email,
-      'joinedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await memberRef.update({
+        'uid': user.uid,
+        'role': 'owner',
+        'email': user.email,
+      });
+    } on FirebaseException catch (error) {
+      if (_isNotFound(error)) {
+        await memberRef.set({
+          'uid': user.uid,
+          'role': 'owner',
+          'email': user.email,
+          'joinedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        createdMember = true;
+      } else if (error.code != 'permission-denied') {
+        rethrow;
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[CalendarBootstrap] uid=${user.uid} isAnonymous=${user.isAnonymous} '
+        'createdCalendar=$createdCalendar createdMember=$createdMember',
+      );
+    }
 
     return calendarId;
+  }
+
+  bool _isNotFound(FirebaseException error) {
+    return error.code == 'not-found';
   }
 
   Future<AppCalendar> createCalendar({
@@ -98,25 +134,6 @@ class FirestoreEventStore {
     );
   }
 
-  Future<List<AppCalendar>> fetchOwnedCalendars(String ownerId) async {
-    final snapshot = await _firestore
-        .collection('calendars')
-        .where('ownerId', isEqualTo: ownerId)
-        .get();
-
-    final calendars = snapshot.docs.map((doc) {
-      final data = doc.data();
-      return AppCalendar(
-        id: doc.id,
-        ownerId: (data['ownerId'] ?? '').toString(),
-        title: (data['title'] ?? 'My Calendar').toString(),
-        color: (data['color'] ?? 'blue').toString(),
-      );
-    }).toList();
-    calendars.sort((a, b) => a.title.compareTo(b.title));
-    return calendars;
-  }
-
   Future<List<AppCalendar>> fetchCalendarsForUser(String uid) async {
     final memberships = await _firestore
         .collectionGroup('members')
@@ -124,6 +141,12 @@ class FirestoreEventStore {
         .get();
 
     final calendarIds = _extractCalendarIds(memberships.docs);
+    if (kDebugMode) {
+      debugPrint(
+        '[CalendarMembership] uid=$uid memberships=${memberships.docs.length} '
+        'calendarIds=$calendarIds',
+      );
+    }
     return _fetchCalendarsByIds(calendarIds);
   }
 
@@ -134,6 +157,12 @@ class FirestoreEventStore {
 
     await for (final memberships in membershipQuery.snapshots()) {
       final calendarIds = _extractCalendarIds(memberships.docs);
+      if (kDebugMode) {
+        debugPrint(
+          '[CalendarMembership] uid=${user.uid} isAnonymous=${user.isAnonymous} '
+          'memberships=${memberships.docs.length} calendarIds=$calendarIds',
+        );
+      }
 
       if (calendarIds.isEmpty && !defaultCalendarCreated) {
         defaultCalendarCreated = true;
@@ -185,32 +214,59 @@ class FirestoreEventStore {
     }
 
     final normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail.isEmpty) {
-      throw StateError('Please enter an email address.');
-    }
     if (role != 'viewer' && role != 'editor') {
       throw StateError('Invite role must be viewer or editor.');
     }
 
-    final inviteRef = _firestore
-        .collection('calendars')
-        .doc(calendarId)
-        .collection('invites')
-        .doc();
-
     final now = DateTime.now();
-    await inviteRef.set({
-      'inviteId': inviteRef.id,
-      'calendarId': calendarId,
-      'emailLower': normalizedEmail,
-      'role': role,
-      'createdBy': user.uid,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(now.add(_inviteLifetime)),
-    });
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final inviteCode = _generateInviteCode();
+      final codeRef = _firestore.collection('inviteCodes').doc(inviteCode);
+      final existingCode = await codeRef.get();
+      if (existingCode.exists) {
+        continue;
+      }
 
-    return inviteRef.id;
+      final inviteRef = _firestore
+          .collection('calendars')
+          .doc(calendarId)
+          .collection('invites')
+          .doc(inviteCode);
+
+      final expiresAt = Timestamp.fromDate(now.add(_inviteLifetime));
+      final invitePayload = <String, dynamic>{
+        'inviteId': inviteCode,
+        'calendarId': calendarId,
+        'role': role,
+        'createdBy': user.uid,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+        'expiresAt': expiresAt,
+      };
+      if (normalizedEmail.isNotEmpty) {
+        invitePayload['emailLower'] = normalizedEmail;
+      }
+
+      final codePayload = <String, dynamic>{
+        'inviteId': inviteCode,
+        'calendarId': calendarId,
+        'role': role,
+        'createdBy': user.uid,
+        'createdAt': FieldValue.serverTimestamp(),
+        'expiresAt': expiresAt,
+      };
+      if (normalizedEmail.isNotEmpty) {
+        codePayload['emailLower'] = normalizedEmail;
+      }
+
+      final batch = _firestore.batch();
+      batch.set(inviteRef, invitePayload);
+      batch.set(codeRef, codePayload);
+      await batch.commit();
+      return inviteCode;
+    }
+
+    throw StateError('Could not generate a unique invite code. Please retry.');
   }
 
   Future<void> revokeInvite(String calendarId, String inviteId) async {
@@ -218,11 +274,20 @@ class FirestoreEventStore {
         .collection('calendars')
         .doc(calendarId)
         .collection('invites')
-        .doc(inviteId);
-    await inviteRef.update({
-      'status': 'revoked',
-      'revokedAt': FieldValue.serverTimestamp(),
-    });
+        .doc(
+          inviteId,
+        );
+    final codeRef = _firestore.collection('inviteCodes').doc(inviteId);
+    final batch = _firestore.batch();
+    batch.set(
+        inviteRef,
+        {
+          'status': 'revoked',
+          'revokedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true));
+    batch.delete(codeRef);
+    await batch.commit();
   }
 
   Stream<List<CalendarInvite>> watchPendingInvites(String calendarId) {
@@ -230,12 +295,17 @@ class FirestoreEventStore {
         .collection('calendars')
         .doc(calendarId)
         .collection('invites')
-        .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
+      final now = DateTime.now();
       return snapshot.docs
           .map((doc) => _inviteFromFirestore(doc, calendarId))
+          .where(
+            (invite) =>
+                invite.status == 'pending' &&
+                (invite.expiresAt == null || invite.expiresAt!.isAfter(now)),
+          )
           .toList(growable: false);
     });
   }
@@ -254,22 +324,27 @@ class FirestoreEventStore {
       throw StateError('A Google account email is required to join.');
     }
 
-    final inviteQuery = await _firestore
-        .collectionGroup('invites')
-        .where('inviteId', isEqualTo: inviteCode)
-        .where('emailLower', isEqualTo: emailLower)
-        .limit(1)
-        .get();
-
-    if (inviteQuery.docs.isEmpty) {
-      throw StateError('Invite code is invalid for this account.');
+    final codeRef = _firestore.collection('inviteCodes').doc(inviteCode);
+    final codeSnapshot = await codeRef.get();
+    if (!codeSnapshot.exists) {
+      throw StateError('Invite code is invalid or expired.');
     }
-
-    final inviteRef = inviteQuery.docs.first.reference;
-    final calendarId =
-        (inviteQuery.docs.first.data()['calendarId'] ?? '').toString();
+    final codeData = codeSnapshot.data() ?? <String, dynamic>{};
+    final calendarId = (codeData['calendarId'] ?? '').toString();
     if (calendarId.isEmpty) {
-      throw StateError('Invite is missing calendar information.');
+      throw StateError('Invite code is invalid.');
+    }
+    final inviteRole = (codeData['role'] ?? '').toString();
+    if (inviteRole != 'viewer' && inviteRole != 'editor') {
+      throw StateError('Invite role is invalid.');
+    }
+    final expiresAt = _readTimestamp(codeData['expiresAt']);
+    if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
+      throw StateError('This invite has expired.');
+    }
+    final targetEmailLower = (codeData['emailLower'] ?? '').toString();
+    if (targetEmailLower.isNotEmpty && targetEmailLower != emailLower) {
+      throw StateError('Invite code is not for this account.');
     }
 
     final memberRef = _firestore
@@ -277,57 +352,18 @@ class FirestoreEventStore {
         .doc(calendarId)
         .collection('members')
         .doc(user.uid);
+    final memberSnapshot = await memberRef.get();
+    if (memberSnapshot.exists) {
+      throw StateError('Already joined');
+    }
 
-    await _firestore.runTransaction((transaction) async {
-      final inviteSnapshot = await transaction.get(inviteRef);
-      if (!inviteSnapshot.exists) {
-        throw StateError('Invite not found.');
-      }
-
-      final data = inviteSnapshot.data() ?? <String, dynamic>{};
-      final status = (data['status'] ?? '').toString();
-      final inviteCalendarId = (data['calendarId'] ?? '').toString();
-      final inviteEmailLower = (data['emailLower'] ?? '').toString();
-      final inviteRole = (data['role'] ?? '').toString();
-      final expiresAt = _readTimestamp(data['expiresAt']);
-
-      if (inviteCalendarId != calendarId || inviteEmailLower != emailLower) {
-        throw StateError('Invite code is invalid for this account.');
-      }
-      if (status == 'revoked') {
-        throw StateError('This invite has been revoked.');
-      }
-      if (status == 'accepted') {
-        throw StateError('This invite has already been used.');
-      }
-      if (status != 'pending') {
-        throw StateError('This invite is no longer active.');
-      }
-      if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
-        throw StateError('This invite has expired.');
-      }
-      if (inviteRole != 'viewer' && inviteRole != 'editor') {
-        throw StateError('Invite role is invalid.');
-      }
-
-      final memberSnapshot = await transaction.get(memberRef);
-      if (memberSnapshot.exists) {
-        throw StateError('Already joined');
-      }
-
-      transaction.set(memberRef, {
-        'uid': user.uid,
-        'role': inviteRole,
-        'email': user.email,
-        'joinedAt': FieldValue.serverTimestamp(),
-        // Stored for rules so join can only happen with a valid pending invite.
-        'inviteId': inviteRef.id,
-      });
-      transaction.update(inviteRef, {
-        'status': 'accepted',
-        'acceptedAt': FieldValue.serverTimestamp(),
-        'acceptedBy': user.uid,
-      });
+    await memberRef.set({
+      'uid': user.uid,
+      'role': inviteRole,
+      'email': user.email,
+      'joinedAt': FieldValue.serverTimestamp(),
+      // Used by rules to validate invite-based membership creation.
+      'inviteId': inviteCode,
     });
   }
 
@@ -626,5 +662,15 @@ class FirestoreEventStore {
     }
     calendars.sort((a, b) => a.title.compareTo(b.title));
     return calendars;
+  }
+
+  String _generateInviteCode({int length = 8}) {
+    final random = Random.secure();
+    final buffer = StringBuffer();
+    for (var i = 0; i < length; i++) {
+      final index = random.nextInt(_inviteCodeAlphabet.length);
+      buffer.write(_inviteCodeAlphabet[index]);
+    }
+    return buffer.toString();
   }
 }

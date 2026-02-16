@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'providers/calendar_provider.dart';
 import 'screens/main_screen.dart';
@@ -51,10 +50,10 @@ class MyApp extends StatelessWidget {
             ],
             theme: _buildLightTheme(provider.settings.primaryColor),
             darkTheme: _buildDarkTheme(provider.settings.primaryColor),
-            themeMode: provider.settings.autoTheme 
-                ? ThemeMode.system 
-                : provider.settings.isDarkMode 
-                    ? ThemeMode.dark 
+            themeMode: provider.settings.autoTheme
+                ? ThemeMode.system
+                : provider.settings.isDarkMode
+                    ? ThemeMode.dark
                     : ThemeMode.light,
             home: const AuthGate(),
           );
@@ -64,7 +63,8 @@ class MyApp extends StatelessWidget {
   }
 
   ThemeData _buildLightTheme(String primaryColorHex) {
-    final primaryColor = Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
+    final primaryColor =
+        Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
     final baseTheme = ThemeData.light(useMaterial3: true);
     final textTheme = baseTheme.textTheme.apply(
       fontFamily: 'Roboto',
@@ -99,7 +99,8 @@ class MyApp extends StatelessWidget {
   }
 
   ThemeData _buildDarkTheme(String primaryColorHex) {
-    final primaryColor = Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
+    final primaryColor =
+        Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
     final baseTheme = ThemeData.dark(useMaterial3: true);
     final textTheme = baseTheme.textTheme.apply(
       fontFamily: 'Roboto',
@@ -133,17 +134,18 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return Consumer<CalendarProvider>(
+      builder: (context, provider, child) {
+        if (!provider.isInitialized) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final user = snapshot.data;
-        return user == null ? const WelcomeScreen() : const MainScreen();
+        final user = provider.currentUser;
+        final shouldShowWelcome =
+            user == null || (user.isAnonymous && provider.isGuestUiLoggedOut);
+        return shouldShowWelcome ? const WelcomeScreen() : const MainScreen();
       },
     );
   }

@@ -1,11 +1,52 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function authEmailLower() {
-      return signedIn() && request.auth.token.email is string
-        ? lower(request.auth.token.email)
-        : '';
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(calendarId, uid) {
+      return /databases/$(database)/documents/calendars/$(calendarId)/members/$(uid);
+    }
+
+    function isMember(calendarId) {
+      return signedIn() && exists(memberPath(calendarId, request.auth.uid));
+    }
+
+    function role(calendarId) {
+      return get(memberPath(calendarId, request.auth.uid)).data.role;
+    }
+
+    function isOwner(calendarId) {
+      return isMember(calendarId) && role(calendarId) == 'owner';
+    }
+
+    function isEditorOrOwner(calendarId) {
+      return isMember(calendarId) &&
+          (role(calendarId) == 'owner' || role(calendarId) == 'editor');
+    }
+
+    function calendarOwnerId(calendarId) {
+      return get(/databases/$(database)/documents/calendars/$(calendarId)).data.ownerId;
+    }
+
+    function validInviteRole(roleValue) {
+      return roleValue == 'viewer' || roleValue == 'editor';
+    }
+
+    function invitePath(calendarId, inviteId) {
+      return /databases/$(database)/documents/calendars/$(calendarId)/invites/$(inviteId);
+    }
+
+    function inviteCodePath(inviteId) {
+      return /databases/$(database)/documents/inviteCodes/$(inviteId);
+    }
+
+    function pendingInvite(calendarId, inviteData) {
+      return inviteData.status == 'pending' &&
+          inviteData.calendarId == calendarId &&
+          inviteData.expiresAt is timestamp &&
+          inviteData.expiresAt > request.time;
     }
 
     match /users/{uid} {
@@ -13,127 +54,112 @@ service cloud.firestore {
     }
 
     match /calendars/{calendarId} {
-      function calendarOwnerId() {
-        return get(/databases/$(database)/documents/calendars/$(calendarId)).data.ownerId;
-      }
-      function isOwner() {
-        return signedIn() && calendarOwnerId() == request.auth.uid;
-      }
-      function isMember() {
-        return signedIn() &&
-          exists(/databases/$(database)/documents/calendars/$(calendarId)/members/$(request.auth.uid));
-      }
-      function role() {
-        return get(/databases/$(database)/documents/calendars/$(calendarId)/members/$(request.auth.uid)).data.role;
-      }
-      function canWriteEvents() {
-        return isMember() && (role() == 'owner' || role() == 'editor');
-      }
-      function validInviteRole(roleValue) {
-        return roleValue == 'viewer' || roleValue == 'editor';
-      }
-      function inviteDoc(inviteId) {
-        return get(/databases/$(database)/documents/calendars/$(calendarId)/invites/$(inviteId));
-      }
-      function inviteExists(inviteId) {
-        return exists(/databases/$(database)/documents/calendars/$(calendarId)/invites/$(inviteId));
-      }
-      function pendingInvite(inviteData) {
-        return inviteData.status == 'pending'
-          && inviteData.calendarId == calendarId
-          && inviteData.emailLower == authEmailLower()
-          && inviteData.expiresAt is timestamp
-          && inviteData.expiresAt > request.time;
-      }
+      // Calendar read is membership-based only.
+      allow get, list: if isMember(calendarId);
 
-      // IMPORTANT: allow owner to read even before membership doc is created (bootstrap).
-      allow read: if isMember() || isOwner();
-
-      // Calendar creation: ownerId must be current uid
+      // Bootstrap and owned-calendar creation.
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isMember() && role() == 'owner';
+      allow update, delete: if isOwner(calendarId);
 
       match /members/{memberUid} {
-        allow read: if isMember() || isOwner();
+        // Critical for collectionGroup('members').where('uid', '==', request.auth.uid):
+        // own membership docs are readable by uid field OR uid doc id.
+        allow read: if signedIn() && (
+          resource.data.uid == request.auth.uid ||
+          memberUid == request.auth.uid ||
+          isOwner(calendarId)
+        );
 
-        // Bootstrap rule: owner can create their own membership doc right after creating the calendar.
-        allow create: if signedIn()
-          && memberUid == request.auth.uid
-          && calendarOwnerId() == request.auth.uid;
+        // Bootstrap: user can create their own owner membership doc.
+        allow create: if signedIn() &&
+          memberUid == request.auth.uid &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.role == 'owner' &&
+          calendarOwnerId(calendarId) == request.auth.uid;
 
-        // Invite acceptance: invited user can create their own member doc.
-        allow create: if signedIn()
-          && memberUid == request.auth.uid
-          && request.auth.token.email is string
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.email is string
-          && lower(request.resource.data.email) == authEmailLower()
-          && validInviteRole(request.resource.data.role)
-          && request.resource.data.inviteId is string
-          && inviteExists(request.resource.data.inviteId)
-          && pendingInvite(inviteDoc(request.resource.data.inviteId).data)
-          && inviteDoc(request.resource.data.inviteId).data.role == request.resource.data.role;
+        // Invite acceptance join flow.
+        allow create: if signedIn() &&
+          memberUid == request.auth.uid &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.email is string &&
+          validInviteRole(request.resource.data.role) &&
+          request.resource.data.inviteId is string &&
+          exists(invitePath(calendarId, request.resource.data.inviteId)) &&
+          exists(inviteCodePath(request.resource.data.inviteId)) &&
+          get(inviteCodePath(request.resource.data.inviteId)).data.calendarId == calendarId &&
+          get(inviteCodePath(request.resource.data.inviteId)).data.expiresAt is timestamp &&
+          get(inviteCodePath(request.resource.data.inviteId)).data.expiresAt > request.time &&
+          pendingInvite(
+            calendarId,
+            get(invitePath(calendarId, request.resource.data.inviteId)).data
+          ) &&
+          (
+            !(get(invitePath(calendarId, request.resource.data.inviteId)).data.emailLower is string) ||
+            get(invitePath(calendarId, request.resource.data.inviteId)).data.emailLower == '' ||
+            (
+              request.auth.token.email is string &&
+              get(invitePath(calendarId, request.resource.data.inviteId)).data.emailLower == request.auth.token.email
+            )
+          ) &&
+          get(invitePath(calendarId, request.resource.data.inviteId)).data.role == request.resource.data.role;
 
-        // Owner manages members later
-        allow update, delete: if isMember() && role() == 'owner';
+        // Owner-managed membership edits.
+        allow update, delete: if isOwner(calendarId);
+      }
+
+      match /events/{eventId} {
+        allow read: if isMember(calendarId);
+        allow create, update, delete: if isEditorOrOwner(calendarId);
       }
 
       match /invites/{inviteId} {
-        // Only owner can create invites.
-        allow create: if isMember()
-          && role() == 'owner'
-          && request.resource.data.keys().hasOnly([
+        // Calendar-scoped invites: readable by members, writable by owner.
+        allow get, list: if isMember(calendarId);
+
+        allow create: if isOwner(calendarId) &&
+          request.resource.data.keys().hasOnly([
             'inviteId',
             'calendarId',
-            'emailLower',
             'role',
             'createdBy',
             'status',
             'createdAt',
             'expiresAt',
-          ])
-          && request.resource.data.inviteId == inviteId
-          && request.resource.data.calendarId == calendarId
-          && request.resource.data.createdBy == request.auth.uid
-          && request.resource.data.status == 'pending'
-          && request.resource.data.emailLower is string
-          && request.resource.data.emailLower == lower(request.resource.data.emailLower)
-          && validInviteRole(request.resource.data.role)
-          && request.resource.data.createdAt is timestamp
-          && request.resource.data.expiresAt is timestamp
-          && request.resource.data.expiresAt > request.time;
+            'emailLower',
+          ]) &&
+          request.resource.data.inviteId == inviteId &&
+          request.resource.data.calendarId == calendarId &&
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.status == 'pending' &&
+          (
+            request.resource.data.emailLower == null ||
+            request.resource.data.emailLower is string
+          ) &&
+          validInviteRole(request.resource.data.role) &&
+          request.resource.data.createdAt is timestamp &&
+          request.resource.data.expiresAt is timestamp &&
+          request.resource.data.expiresAt > request.time;
 
-        // Owner can read all invites in their calendar.
-        // Invitee can read only invites addressed to their email.
-        allow get: if (isMember() && role() == 'owner')
-          || (signedIn() && resource.data.emailLower == authEmailLower());
-        allow list: if (isMember() && role() == 'owner')
-          || (signedIn() && resource.data.emailLower == authEmailLower());
-
-        // Owner can revoke/update invites.
-        // Invitee can only accept their own pending, non-expired invite.
-        allow update: if (isMember() && role() == 'owner')
-          || (
-            signedIn()
-            && resource.data.emailLower == authEmailLower()
-            && pendingInvite(resource.data)
-            && existsAfter(/databases/$(database)/documents/calendars/$(calendarId)/members/$(request.auth.uid))
-            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-              'status',
-              'acceptedAt',
-              'acceptedBy',
-            ])
-            && request.resource.data.status == 'accepted'
-            && request.resource.data.acceptedBy == request.auth.uid
-          );
-
-        allow delete: if isMember() && role() == 'owner';
+        allow update, delete: if isOwner(calendarId);
       }
+    }
 
-      match /events/{eventId} {
-        allow read: if isMember() || isOwner();
-        allow create, update, delete: if canWriteEvents() || isOwner();
-      }
+    // Optional global locator for code -> calendarId. Not invite payload storage.
+    match /inviteCodes/{inviteId} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.calendarId is string
+        && isOwner(request.resource.data.calendarId);
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.calendarId is string
+        && isOwner(resource.data.calendarId);
+    }
+
+    // Disabled old global invites collection.
+    match /invites/{inviteId} {
+      allow read, write: if false;
     }
   }
 }
