@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/features.dart';
 import '../providers/calendar_provider.dart';
+import 'main_screen.dart';
 
 class JoinCalendarScreen extends StatefulWidget {
   const JoinCalendarScreen({Key? key}) : super(key: key);
@@ -23,6 +25,39 @@ class _JoinCalendarScreenState extends State<JoinCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!Features.sharingEnabled) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Join calendar'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.block, size: 40),
+                const SizedBox(height: 12),
+                const Text('Feature disabled'),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const MainScreen(initialIndex: 0),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Back to Home'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Consumer<CalendarProvider>(
       builder: (context, provider, child) {
         return Scaffold(
@@ -127,7 +162,7 @@ class _JoinCalendarScreenState extends State<JoinCalendarScreen> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .errorContainer
-                                .withOpacity(0.35),
+                                .withValues(alpha: 0.35),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -153,16 +188,26 @@ class _JoinCalendarScreenState extends State<JoinCalendarScreen> {
                       else
                         Column(
                           children: provider.calendars.map((calendar) {
+                            final role = provider.roleForCalendar(calendar.id);
                             final isActive =
                                 calendar.id == provider.activeCalendarId;
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
                               title: Text(calendar.title),
                               subtitle: Text(calendar.id),
-                              trailing: isActive
-                                  ? const Icon(Icons.check_circle,
-                                      color: Colors.green)
-                                  : null,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _RoleBadge(role: role),
+                                  if (isActive) ...[
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                    ),
+                                  ],
+                                ],
+                              ),
                               onTap: () =>
                                   provider.setActiveCalendar(calendar.id),
                             );
@@ -206,8 +251,11 @@ class _JoinCalendarScreenState extends State<JoinCalendarScreen> {
       await provider.acceptInvite(inviteCode);
       if (!mounted) return;
       _inviteCodeController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Calendar joined successfully.')),
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(initialIndex: 0),
+        ),
+        (route) => false,
       );
     } catch (error) {
       if (!mounted) return;
@@ -261,5 +309,37 @@ class _JoinCalendarScreenState extends State<JoinCalendarScreen> {
       return 'Invite code is invalid for your account.';
     }
     return rawError;
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  const _RoleBadge({required this.role});
+
+  final String role;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedRole = role.toLowerCase();
+    final color = switch (normalizedRole) {
+      'owner' => Colors.deepOrange,
+      'editor' => Colors.blue,
+      _ => Colors.grey,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        normalizedRole,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }

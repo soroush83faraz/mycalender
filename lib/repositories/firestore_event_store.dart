@@ -131,6 +131,7 @@ class FirestoreEventStore {
       ownerId: owner.uid,
       title: title,
       color: color,
+      membershipRole: 'owner',
     );
   }
 
@@ -140,14 +141,18 @@ class FirestoreEventStore {
         .where('uid', isEqualTo: uid)
         .get();
 
-    final calendarIds = _extractCalendarIds(memberships.docs);
+    final membershipRoles = _extractMembershipRoles(memberships.docs);
+    final calendarIds = membershipRoles.keys.toList(growable: false);
     if (kDebugMode) {
       debugPrint(
         '[CalendarMembership] uid=$uid memberships=${memberships.docs.length} '
         'calendarIds=$calendarIds',
       );
     }
-    return _fetchCalendarsByIds(calendarIds);
+    return _fetchCalendarsByIds(
+      calendarIds,
+      membershipRoles: membershipRoles,
+    );
   }
 
   Stream<List<AppCalendar>> watchMyCalendars(User user) async* {
@@ -156,7 +161,8 @@ class FirestoreEventStore {
         _firestore.collectionGroup('members').where('uid', isEqualTo: user.uid);
 
     await for (final memberships in membershipQuery.snapshots()) {
-      final calendarIds = _extractCalendarIds(memberships.docs);
+      final membershipRoles = _extractMembershipRoles(memberships.docs);
+      final calendarIds = membershipRoles.keys.toList(growable: false);
       if (kDebugMode) {
         debugPrint(
           '[CalendarMembership] uid=${user.uid} isAnonymous=${user.isAnonymous} '
@@ -170,7 +176,10 @@ class FirestoreEventStore {
         continue;
       }
 
-      yield await _fetchCalendarsByIds(calendarIds);
+      yield await _fetchCalendarsByIds(
+        calendarIds,
+        membershipRoles: membershipRoles,
+      );
     }
   }
 
@@ -310,7 +319,7 @@ class FirestoreEventStore {
     });
   }
 
-  Future<void> acceptInvite(String inviteCode) async {
+  Future<String> acceptInvite(String inviteCode) async {
     final user = _auth.currentUser;
     if (user == null) {
       throw StateError('Please sign in to join shared calendars.');
@@ -365,6 +374,7 @@ class FirestoreEventStore {
       // Used by rules to validate invite-based membership creation.
       'inviteId': inviteCode,
     });
+    return calendarId;
   }
 
   Future<bool> calendarExists(String calendarId) async {
@@ -623,18 +633,25 @@ class FirestoreEventStore {
     return hash.toRadixString(16).padLeft(8, '0');
   }
 
-  List<String> _extractCalendarIds(
+  Map<String, String> _extractMembershipRoles(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> membershipDocs,
   ) {
-    return membershipDocs
-        .map((doc) => doc.reference.parent.parent?.id)
-        .whereType<String>()
-        .toSet()
-        .toList(growable: false);
+    final roles = <String, String>{};
+    for (final doc in membershipDocs) {
+      final calendarId = doc.reference.parent.parent?.id;
+      if (calendarId == null || calendarId.isEmpty) {
+        continue;
+      }
+      final role = (doc.data()['role'] ?? 'viewer').toString();
+      roles[calendarId] = role;
+    }
+    return roles;
   }
 
   Future<List<AppCalendar>> _fetchCalendarsByIds(
-      List<String> calendarIds) async {
+    List<String> calendarIds, {
+    Map<String, String> membershipRoles = const <String, String>{},
+  }) async {
     if (calendarIds.isEmpty) {
       return <AppCalendar>[];
     }
@@ -657,6 +674,7 @@ class FirestoreEventStore {
           ownerId: (data['ownerId'] ?? '').toString(),
           title: (data['title'] ?? 'My Calendar').toString(),
           color: (data['color'] ?? 'blue').toString(),
+          membershipRole: membershipRoles[snapshot.id] ?? 'viewer',
         ),
       );
     }

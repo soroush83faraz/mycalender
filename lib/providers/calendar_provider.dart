@@ -15,6 +15,7 @@ import '../services/auth_service.dart';
 
 class CalendarProvider extends ChangeNotifier {
   static const String _guestUiLoggedOutKey = 'guest_ui_logged_out';
+  static const String _selectedCalendarKeyPrefix = 'selected_calendar_id_';
 
   CalendarProvider({
     LocalEventStore? localEventStore,
@@ -87,6 +88,15 @@ class CalendarProvider extends ChangeNotifier {
   bool get selectedCalendarMembershipExists =>
       _selectedCalendarMembershipExists;
   String? get activeMembershipRole => _activeMembershipRole;
+  String roleForCalendar(String calendarId) {
+    for (final calendar in _calendars) {
+      if (calendar.id == calendarId) {
+        return calendar.membershipRole;
+      }
+    }
+    return 'viewer';
+  }
+
   bool get canEditActiveCalendarEvents =>
       _activeMembershipRole == 'owner' || _activeMembershipRole == 'editor';
   bool get isActiveCalendarOwner => _activeMembershipRole == 'owner';
@@ -214,8 +224,17 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> setActiveCalendar(String calendarId) async {
-    if (_activeCalendarId == calendarId) return;
+    final uid = _currentUser?.uid;
+    if (_activeCalendarId == calendarId) {
+      if (uid != null) {
+        await _saveSelectedCalendarId(uid: uid, calendarId: calendarId);
+      }
+      return;
+    }
     _activeCalendarId = calendarId;
+    if (uid != null) {
+      await _saveSelectedCalendarId(uid: uid, calendarId: calendarId);
+    }
     if (_currentUser != null) {
       try {
         await _refreshSelectedCalendarStatus();
@@ -269,7 +288,7 @@ class CalendarProvider extends ChangeNotifier {
     return _firestoreEventStore.watchPendingInvites(calendarId);
   }
 
-  Future<void> acceptInvite(String inviteCode) async {
+  Future<String> acceptInvite(String inviteCode) async {
     final user = _currentUser;
     if (user == null) {
       throw StateError('Please sign in to join shared calendars.');
@@ -278,29 +297,22 @@ class CalendarProvider extends ChangeNotifier {
       throw StateError('Please upgrade to Google to join shared calendars.');
     }
 
-    final beforeCalendarIds = _calendars.map((calendar) => calendar.id).toSet();
-    await _firestoreEventStore.acceptInvite(inviteCode.trim());
+    final joinedCalendarId =
+        await _firestoreEventStore.acceptInvite(inviteCode.trim());
 
     final refreshedCalendars =
         await _firestoreEventStore.fetchCalendarsForUser(user.uid);
     _calendars = refreshedCalendars;
 
-    String? joinedCalendarId;
-    for (final calendar in refreshedCalendars) {
-      if (!beforeCalendarIds.contains(calendar.id)) {
-        joinedCalendarId = calendar.id;
-        break;
-      }
-    }
-
-    if (joinedCalendarId != null) {
+    if (refreshedCalendars.any((calendar) => calendar.id == joinedCalendarId)) {
       await setActiveCalendar(joinedCalendarId);
-      return;
+      return joinedCalendarId;
     }
 
     await _refreshSelectedCalendarStatus();
     await _refreshCloudCountForActiveCalendar();
     notifyListeners();
+    return _activeCalendarId ?? joinedCalendarId;
   }
 
   Future<void> forceSyncLocalToCloud() async {
@@ -467,22 +479,33 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<String> _ensureUserCalendar(User user) async {
-    final selectedCalendarId =
+    final defaultCalendarId =
         await _firestoreEventStore.ensureDefaultCalendarForUser(user);
-    _activeCalendarId = selectedCalendarId;
 
     try {
       _calendars = await _firestoreEventStore.fetchCalendarsForUser(user.uid);
     } catch (_) {
       _calendars = <AppCalendar>[
         AppCalendar(
-          id: selectedCalendarId,
+          id: defaultCalendarId,
           ownerId: user.uid,
           title: 'My Calendar',
           color: 'blue',
+          membershipRole: 'owner',
         ),
       ];
     }
+
+    final selectedCalendarId = await _resolvePreferredActiveCalendarId(
+      user: user,
+      calendars: _calendars,
+      defaultCalendarId: defaultCalendarId,
+    );
+    _activeCalendarId = selectedCalendarId;
+    await _saveSelectedCalendarId(
+      uid: user.uid,
+      calendarId: selectedCalendarId,
+    );
 
     await _refreshSelectedCalendarStatus();
     return selectedCalendarId;
@@ -503,9 +526,16 @@ class CalendarProvider extends ChangeNotifier {
         }
 
         final previousCalendarId = _activeCalendarId;
-        if (_activeCalendarId == null ||
-            !_calendars.any((calendar) => calendar.id == _activeCalendarId)) {
-          _activeCalendarId = _calendars.first.id;
+        _activeCalendarId = await _resolvePreferredActiveCalendarId(
+          user: user,
+          calendars: _calendars,
+          defaultCalendarId: user.uid,
+        );
+        if (_activeCalendarId != null) {
+          await _saveSelectedCalendarId(
+            uid: user.uid,
+            calendarId: _activeCalendarId!,
+          );
         }
 
         await _refreshSelectedCalendarStatus();
@@ -678,6 +708,52 @@ class CalendarProvider extends ChangeNotifier {
   Future<void> _saveGuestUiLogoutState() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_guestUiLoggedOutKey, _guestUiLoggedOut);
+  }
+
+  Future<void> _saveSelectedCalendarId({
+    required String uid,
+    required String calendarId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      '$_selectedCalendarKeyPrefix$uid',
+      calendarId,
+    );
+  }
+
+  Future<String?> _loadSelectedCalendarId(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('$_selectedCalendarKeyPrefix$uid');
+  }
+
+  Future<String> _resolvePreferredActiveCalendarId({
+    required User user,
+    required List<AppCalendar> calendars,
+    required String defaultCalendarId,
+  }) async {
+    if (calendars.isEmpty) {
+      return defaultCalendarId;
+    }
+
+    final availableCalendarIds =
+        calendars.map((calendar) => calendar.id).toSet();
+    final currentCalendarId = _activeCalendarId;
+    if (currentCalendarId != null &&
+        availableCalendarIds.contains(currentCalendarId)) {
+      return currentCalendarId;
+    }
+
+    final savedCalendarId = await _loadSelectedCalendarId(user.uid);
+    if (savedCalendarId != null &&
+        availableCalendarIds.contains(savedCalendarId)) {
+      return savedCalendarId;
+    }
+
+    if (availableCalendarIds.contains(defaultCalendarId)) {
+      return defaultCalendarId;
+    }
+
+    return calendars.first.id;
   }
 
   Future<void> _loadGuestUiLogoutState() async {

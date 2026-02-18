@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/calendar_provider.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/events_screen.dart';
 import '../screens/tools_screen.dart';
@@ -8,14 +6,19 @@ import '../screens/settings_screen.dart';
 import '../utils/responsive_helper.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  const MainScreen({
+    Key? key,
+    this.initialIndex = 0,
+  }) : super(key: key);
+
+  final int initialIndex;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
 
   final List<Widget> _screens = [
     const CalendarScreen(),
@@ -23,6 +26,12 @@ class _MainScreenState extends State<MainScreen> {
     const ToolsScreen(),
     const SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +84,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
       );
     }
-    
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,

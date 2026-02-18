@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import '../config/features.dart';
 import '../models/calendar_invite.dart';
 import '../providers/calendar_provider.dart';
 import 'backend_health_check_screen.dart';
@@ -32,7 +33,8 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               _buildAccountSection(context, provider),
-              if (provider.isActiveCalendarOwner &&
+              if (Features.sharingEnabled &&
+                  provider.isActiveCalendarOwner &&
                   provider.activeCalendarId != null) ...[
                 const SizedBox(height: 16),
                 const _SharingSection(),
@@ -322,7 +324,7 @@ class SettingsScreen extends StatelessWidget {
                 provider.updateSettings(
                   provider.settings.copyWith(
                     primaryColor:
-                        '#${tempColor.value.toRadixString(16).substring(2)}',
+                        '#${tempColor.toARGB32().toRadixString(16).substring(2)}',
                   ),
                 );
                 Navigator.pop(context);
@@ -463,7 +465,9 @@ class SettingsScreen extends StatelessWidget {
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () => _handleUpgradeToGoogle(context, provider),
               ),
-            if (provider.isSignedIn && !provider.isGuestUser)
+            if (Features.sharingEnabled &&
+                provider.isSignedIn &&
+                !provider.isGuestUser)
               ListTile(
                 leading: const Icon(Icons.group_add),
                 title: const Text('Join calendar'),
@@ -479,13 +483,6 @@ class SettingsScreen extends StatelessWidget {
                   );
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Sign out'),
-              subtitle: const Text('Sign out'),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => _confirmSignOut(context, provider),
-            ),
           ],
         ),
       ),
