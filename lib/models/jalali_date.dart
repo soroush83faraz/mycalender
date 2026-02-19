@@ -7,50 +7,46 @@ class JalaliDate {
 
   /// Convert Gregorian date to Jalali date
   static JalaliDate fromGregorian(DateTime gregorian) {
-    int gy = gregorian.year;
-    int gm = gregorian.month;
-    int gd = gregorian.day;
+    int gy = gregorian.year - 1600;
+    int gm = gregorian.month - 1;
+    int gd = gregorian.day - 1;
 
-    int jy, jm, jd;
-    
-    if (gy <= 1600) {
-      jy = 0; jm = 1; jd = 1;
-    } else {
-      jy = 979;
-      gy -= 1600;
-      
-      int totalDays = 365 * gy + ((gy + 3) ~/ 4) - ((gy + 99) ~/ 100) + ((gy + 399) ~/ 400) - 80 + gd;
-      
-      List<int> monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-      if (((gy + 1600) % 4 == 0 && (gy + 1600) % 100 != 0) || (gy + 1600) % 400 == 0) {
-        monthDays[1] = 29;
-      }
-      
-      for (int i = 0; i < gm - 1; i++) {
-        totalDays += monthDays[i];
-      }
-      
-      jy += 33 * (totalDays ~/ 12053);
-      totalDays %= 12053;
-      
-      jy += 4 * (totalDays ~/ 1461);
-      totalDays %= 1461;
-      
-      if (totalDays >= 366) {
-        jy += (totalDays - 1) ~/ 365;
-        totalDays = (totalDays - 1) % 365;
-      }
-      
-      if (totalDays < 186) {
-        jm = 1 + totalDays ~/ 31;
-        jd = 1 + (totalDays % 31);
-      } else {
-        jm = 7 + (totalDays - 186) ~/ 30;
-        jd = 1 + ((totalDays - 186) % 30);
-      }
+    final gdm = <int>[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+    int gDayNo =
+        365 * gy + ((gy + 3) ~/ 4) - ((gy + 99) ~/ 100) + ((gy + 399) ~/ 400);
+
+    for (int i = 0; i < gm; i++) {
+      gDayNo += gdm[i];
     }
-    
-    return JalaliDate(year: jy, month: jm, day: jd);
+
+    final isLeapGregorian = ((gy + 1600) % 4 == 0 && (gy + 1600) % 100 != 0) ||
+        ((gy + 1600) % 400 == 0);
+    if (gm > 1 && isLeapGregorian) {
+      gDayNo++;
+    }
+    gDayNo += gd;
+
+    int jDayNo = gDayNo - 79;
+    final jNp = jDayNo ~/ 12053;
+    jDayNo %= 12053;
+
+    int jy = 979 + 33 * jNp + 4 * (jDayNo ~/ 1461);
+    jDayNo %= 1461;
+
+    if (jDayNo >= 366) {
+      jy += (jDayNo - 1) ~/ 365;
+      jDayNo = (jDayNo - 1) % 365;
+    }
+
+    final jdm = <int>[31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+    int jm = 0;
+    while (jm < 11 && jDayNo >= jdm[jm]) {
+      jDayNo -= jdm[jm];
+      jm++;
+    }
+
+    return JalaliDate(year: jy, month: jm + 1, day: jDayNo + 1);
   }
 
   /// Get the name of the month in Persian
@@ -88,55 +84,59 @@ class JalaliDate {
 
   @override
   String toString() => '$year/$month/$day';
-  
+
   /// Convert Jalali to Gregorian
   DateTime toGregorian() {
-    int jy = year;
-    int jm = month;
-    int jd = day;
-    
-    int totalDays = 365 * jy + ((jy + 33) ~/ 128) * 683 + ((jy + 33) % 128) ~/ 4 * 1461 + (((jy + 33) % 128) % 4) * 365;
-    
-    for (int i = 1; i < jm; i++) {
-      if (i <= 6) {
-        totalDays += 31;
-      } else if (i <= 11) {
-        totalDays += 30;
+    int jy = year - 979;
+    int jm = month - 1;
+    int jd = day - 1;
+
+    final jdm = <int>[31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+    int jDayNo = 365 * jy + (jy ~/ 33) * 8 + ((jy % 33) + 3) ~/ 4;
+
+    for (int i = 0; i < jm; i++) {
+      jDayNo += jdm[i];
+    }
+    jDayNo += jd;
+
+    int gDayNo = jDayNo + 79;
+    int gy = 1600 + 400 * (gDayNo ~/ 146097);
+    gDayNo %= 146097;
+
+    bool leap = true;
+    if (gDayNo >= 36525) {
+      gDayNo--;
+      gy += 100 * (gDayNo ~/ 36524);
+      gDayNo %= 36524;
+
+      if (gDayNo >= 365) {
+        gDayNo++;
       } else {
-        totalDays += ((jy % 33 * 8 + (jy % 33 + 3) ~/ 4) % 128 < 29) ? 29 : 30;
+        leap = false;
       }
     }
-    
-    totalDays += jd + 1948321;
-    
-    int gy = 1600 + 400 * ((totalDays - 1721426) ~/ 146097);
-    totalDays = (totalDays - 1721426) % 146097;
-    
-    if (totalDays >= 36525) {
-      totalDays--;
-      gy += 100 * (totalDays ~/ 36524);
-      totalDays %= 36524;
-      if (totalDays >= 365) totalDays++;
+
+    gy += 4 * (gDayNo ~/ 1461);
+    gDayNo %= 1461;
+
+    if (gDayNo >= 366) {
+      leap = false;
+      gDayNo--;
+      gy += gDayNo ~/ 365;
+      gDayNo %= 365;
     }
-    
-    gy += 4 * (totalDays ~/ 1461);
-    totalDays %= 1461;
-    
-    if (totalDays >= 366) {
-      totalDays--;
-      gy += totalDays ~/ 365;
-      totalDays %= 365;
+
+    final gdm = <int>[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (leap) {
+      gdm[1] = 29;
     }
-    
-    List<int> monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if ((gy % 4 == 0 && gy % 100 != 0) || gy % 400 == 0) monthDays[1] = 29;
-    
-    int gm = 1;
-    while (totalDays >= monthDays[gm - 1]) {
-      totalDays -= monthDays[gm - 1];
+
+    int gm = 0;
+    while (gm < 11 && gDayNo >= gdm[gm]) {
+      gDayNo -= gdm[gm];
       gm++;
     }
-    
-    return DateTime(gy, gm, totalDays + 1);
+
+    return DateTime(gy, gm + 1, gDayNo + 1);
   }
 }

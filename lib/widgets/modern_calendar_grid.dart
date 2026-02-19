@@ -14,6 +14,7 @@ class ModernCalendarGrid extends StatelessWidget {
   final List<Event> events;
   final List<Holiday> holidays;
   final bool usePersianNumbers;
+  final bool showGregorianCalendar;
 
   const ModernCalendarGrid({
     Key? key,
@@ -24,6 +25,7 @@ class ModernCalendarGrid extends StatelessWidget {
     this.events = const [],
     this.holidays = const [],
     this.usePersianNumbers = true,
+    this.showGregorianCalendar = false,
   }) : super(key: key);
 
   @override
@@ -86,7 +88,10 @@ class ModernCalendarGrid extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.66),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.66),
                   ),
                 ),
               ),
@@ -96,7 +101,8 @@ class ModernCalendarGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildCalendarDays(BuildContext context, int daysInMonth, int firstDayWeekday) {
+  Widget _buildCalendarDays(
+      BuildContext context, int daysInMonth, int firstDayWeekday) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -126,6 +132,8 @@ class ModernCalendarGrid extends StatelessWidget {
     final dayEvents = _getEventsForDay(day);
     final dayHolidays = holidays.where((h) => h.day == day).toList();
     final hasHoliday = dayHolidays.isNotEmpty;
+    final gregorianDate =
+        JalaliDate(year: year, month: month, day: day).toGregorian();
 
     return GestureDetector(
       onTap: () => onDaySelected?.call(day),
@@ -133,7 +141,8 @@ class ModernCalendarGrid extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: _getDayBackgroundColor(context, isSelected, isToday, hasHoliday),
+          color:
+              _getDayBackgroundColor(context, isSelected, isToday, hasHoliday),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: _getDayBorderColor(context, isSelected, isToday),
@@ -161,11 +170,31 @@ class ModernCalendarGrid extends StatelessWidget {
                 CalendarUtils.formatNumber(day, usePersian: usePersianNumbers),
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: _getDayTextColor(context, isSelected, isToday, hasHoliday),
+                  fontWeight:
+                      isToday || isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: _getDayTextColor(
+                      context, isSelected, isToday, hasHoliday),
                 ),
               ),
             ),
+            if (showGregorianCalendar)
+              Positioned(
+                top: 4,
+                left: 4,
+                child: Text(
+                  CalendarUtils.formatNumber(
+                    gregorianDate.day,
+                    usePersian: usePersianNumbers,
+                  ),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: _getDayTextColor(
+                            context, isSelected, isToday, hasHoliday)
+                        .withOpacity(0.75),
+                  ),
+                ),
+              ),
             if (dayEvents.isNotEmpty)
               Positioned(
                 top: 4,
@@ -198,7 +227,8 @@ class ModernCalendarGrid extends StatelessWidget {
     );
   }
 
-  Color _getDayBackgroundColor(BuildContext context, bool isSelected, bool isToday, bool hasHoliday) {
+  Color _getDayBackgroundColor(
+      BuildContext context, bool isSelected, bool isToday, bool hasHoliday) {
     if (isSelected) {
       return Theme.of(context).colorScheme.primary.withOpacity(0.28);
     }
@@ -211,7 +241,8 @@ class ModernCalendarGrid extends StatelessWidget {
     return Colors.white.withOpacity(0.06);
   }
 
-  Color _getDayBorderColor(BuildContext context, bool isSelected, bool isToday) {
+  Color _getDayBorderColor(
+      BuildContext context, bool isSelected, bool isToday) {
     if (isSelected) {
       return Theme.of(context).colorScheme.primary.withOpacity(0.9);
     }
@@ -221,7 +252,8 @@ class ModernCalendarGrid extends StatelessWidget {
     return Colors.white.withOpacity(0.2);
   }
 
-  Color _getDayTextColor(BuildContext context, bool isSelected, bool isToday, bool hasHoliday) {
+  Color _getDayTextColor(
+      BuildContext context, bool isSelected, bool isToday, bool hasHoliday) {
     if (isSelected) {
       return Colors.white;
     }

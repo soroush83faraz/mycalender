@@ -7,14 +7,14 @@ class CalendarUtils {
       final jalali = JalaliDate(year: year, month: month, day: 1);
       final gregorian = jalali.toGregorian();
       return gregorianWeekdayToPersianIndex(gregorian.weekday);
-    } catch (e) { 
+    } catch (e) {
       return 0; // Default to Saturday if conversion fails
     }
   }
 
   /// Convert Gregorian weekday index (Mon=1..Sun=7) to Persian index (Sat=0..Fri=6)
   static int gregorianWeekdayToPersianIndex(int weekday) {
-    return (weekday + 2) % 7;
+    return (weekday + 1) % 7;
   }
 
   /// Get Persian weekday name directly from a Gregorian date
@@ -38,9 +38,10 @@ class CalendarUtils {
 
   /// Check if a year is a leap year in Jalali calendar
   static bool isLeapYear(int year) {
-    final cycle = year + 1474;
-    final aux = ((cycle % 2820) + 474) % 2816;
-    return (aux + 38) * 682 % 2816 < 682;
+    final startOfYear = JalaliDate(year: year, month: 1, day: 1).toGregorian();
+    final startOfNextYear =
+        JalaliDate(year: year + 1, month: 1, day: 1).toGregorian();
+    return startOfNextYear.difference(startOfYear).inDays == 366;
   }
 
   /// Convert Jalali date to Gregorian
@@ -93,7 +94,13 @@ class CalendarUtils {
   /// Get Persian weekday name by index
   static String getPersianWeekdayName(int weekdayIndex) {
     const List<String> weekdays = [
-      'شنبه', 'یکشنبه', 'دوشنبه', 'سهشنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'
+      'شنبه',
+      'یکشنبه',
+      'دوشنبه',
+      'سهشنبه',
+      'چهارشنبه',
+      'پنجشنبه',
+      'جمعه'
     ];
     return weekdays[weekdayIndex % 7];
   }

@@ -304,6 +304,7 @@ class CalendarScreen extends StatelessWidget {
               provider.settings.showEvents ? provider.events : const <Event>[],
           holidays: holidays,
           usePersianNumbers: provider.settings.showPersianNumbers,
+          showGregorianCalendar: provider.settings.showGregorianCalendar,
         );
       case 'year':
         final holidays = provider.settings.showHolidays
@@ -321,6 +322,7 @@ class CalendarScreen extends StatelessWidget {
               provider.settings.showEvents ? provider.events : const <Event>[],
           holidays: holidays,
           usePersianNumbers: provider.settings.showPersianNumbers,
+          showGregorianCalendar: provider.settings.showGregorianCalendar,
         );
       case 'month':
       default:
@@ -343,6 +345,7 @@ class CalendarScreen extends StatelessWidget {
               provider.settings.showEvents ? provider.events : const <Event>[],
           holidays: holidays,
           usePersianNumbers: provider.settings.showPersianNumbers,
+          showGregorianCalendar: provider.settings.showGregorianCalendar,
         );
     }
   }
@@ -409,10 +412,9 @@ class CalendarScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     JalaliDate.getWeekdayName(
-                      CalendarUtils.getFirstDayOfMonth(
-                              selectedDate.year, selectedDate.month) +
-                          selectedDate.day -
-                          1,
+                      CalendarUtils.gregorianWeekdayToPersianIndex(
+                        selectedGregorianDate.weekday,
+                      ),
                     ),
                     style: TextStyle(
                       fontSize: 14,
@@ -435,7 +437,8 @@ class CalendarScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPrayerTimesCard(BuildContext context, CalendarProvider provider) {
+  Widget _buildPrayerTimesCard(
+      BuildContext context, CalendarProvider provider) {
     const fallback = <String, String>{
       'اذان صبح': '05:20',
       'طلوع خورشید': '06:42',
@@ -488,14 +491,14 @@ class CalendarScreen extends StatelessWidget {
 
   static const Map<String, Map<String, String>> _cityPrayerTimes =
       <String, Map<String, String>>{
-        'Tehran': <String, String>{
-          'اذان صبح': '05:20',
-          'طلوع خورشید': '06:42',
-          'اذان ظهر': '12:11',
-          'غروب خورشید': '17:53',
-          'اذان مغرب': '19:10',
-        },
-      };
+    'Tehran': <String, String>{
+      'اذان صبح': '05:20',
+      'طلوع خورشید': '06:42',
+      'اذان ظهر': '12:11',
+      'غروب خورشید': '17:53',
+      'اذان مغرب': '19:10',
+    },
+  };
 
   Widget _buildFloatingActionButtons(
       BuildContext context, CalendarProvider provider) {

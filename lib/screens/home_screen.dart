@@ -122,7 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(width: 8),
                           Text(
                             '(${JalaliDate.getWeekdayName(
-                              _getGregorianDate(_selectedDay!).weekday - 1,
+                              CalendarUtils.gregorianWeekdayToPersianIndex(
+                                _getGregorianDate(_selectedDay!).weekday,
+                              ),
                             )})',
                             style: const TextStyle(
                               fontSize: 16,
