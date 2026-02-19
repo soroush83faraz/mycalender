@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import '../models/jalali_date.dart';
 import '../models/event.dart';
@@ -27,17 +29,41 @@ class ModernCalendarGrid extends StatelessWidget {
     final daysInMonth = CalendarUtils.getDaysInMonth(year, month);
     final firstDayWeekday = CalendarUtils.getFirstDayOfMonth(year, month);
 
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            _buildWeekdayHeaders(context),
-            const SizedBox(height: 8),
-            _buildCalendarDays(context, daysInMonth, firstDayWeekday),
-          ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.12),
+                Colors.lightBlueAccent.withOpacity(0.05),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.18),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+          child: Column(
+            children: [
+              _buildWeekdayHeaders(context),
+              const SizedBox(height: 8),
+              _buildCalendarDays(context, daysInMonth, firstDayWeekday),
+            ],
+          ),
         ),
       ),
     );
@@ -45,24 +71,26 @@ class ModernCalendarGrid extends StatelessWidget {
 
   Widget _buildWeekdayHeaders(BuildContext context) {
     const weekdays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
-    
+
     return Row(
-      children: weekdays.map((day) => 
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              day,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.primary,
+      children: weekdays
+          .map(
+            (day) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  day,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.66),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ).toList(),
+          )
+          .toList(),
     );
   }
 
@@ -72,14 +100,14 @@ class ModernCalendarGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 1.0,
-        mainAxisSpacing: 2,
-        crossAxisSpacing: 2,
+        childAspectRatio: 0.95,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
       ),
-      itemCount: 35, // 5 weeks * 7 days
+      itemCount: 42,
       itemBuilder: (context, index) {
         if (index < firstDayWeekday || index >= firstDayWeekday + daysInMonth) {
-          return Container();
+          return const SizedBox.shrink();
         }
 
         final day = index - firstDayWeekday + 1;
@@ -89,34 +117,40 @@ class ModernCalendarGrid extends StatelessWidget {
   }
 
   Widget _buildDayCell(BuildContext context, int day) {
-    final isSelected = selectedDate?.year == year && 
-                      selectedDate?.month == month && 
-                      selectedDate?.day == day;
+    final isSelected = selectedDate?.year == year &&
+        selectedDate?.month == month &&
+        selectedDate?.day == day;
     final isToday = _isToday(day);
     final dayEvents = _getEventsForDay(day);
     final dayHolidays = holidays.where((h) => h.day == day).toList();
     final hasHoliday = dayHolidays.isNotEmpty;
-    
+
     return GestureDetector(
       onTap: () => onDaySelected?.call(day),
-      child: Container(
-        margin: const EdgeInsets.all(2),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
         decoration: BoxDecoration(
           color: _getDayBackgroundColor(context, isSelected, isToday, hasHoliday),
-          borderRadius: BorderRadius.circular(12),
-          border: isToday && !isSelected
-              ? Border.all(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 2,
-                )
-              : null,
-          boxShadow: isSelected ? [
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _getDayBorderColor(context, isSelected, isToday),
+            width: isSelected ? 1.3 : 1,
+          ),
+          boxShadow: [
+            if (isSelected)
+              BoxShadow(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.33),
+                blurRadius: 16,
+                spreadRadius: 1.5,
+                offset: const Offset(0, 0),
+              ),
             BoxShadow(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              color: Colors.black.withOpacity(0.12),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
-          ] : null,
+          ],
         ),
         child: Stack(
           children: [
@@ -164,25 +198,38 @@ class ModernCalendarGrid extends StatelessWidget {
 
   Color _getDayBackgroundColor(BuildContext context, bool isSelected, bool isToday, bool hasHoliday) {
     if (isSelected) {
-      return Theme.of(context).colorScheme.primary;
+      return Theme.of(context).colorScheme.primary.withOpacity(0.28);
     }
     if (isToday) {
-      return Theme.of(context).colorScheme.primary.withOpacity(0.1);
+      return Theme.of(context).colorScheme.primary.withOpacity(0.16);
     }
     if (hasHoliday) {
-      return Colors.red.withOpacity(0.1);
+      return Colors.red.withOpacity(0.12);
     }
-    return Colors.transparent;
+    return Colors.white.withOpacity(0.06);
+  }
+
+  Color _getDayBorderColor(BuildContext context, bool isSelected, bool isToday) {
+    if (isSelected) {
+      return Theme.of(context).colorScheme.primary.withOpacity(0.9);
+    }
+    if (isToday) {
+      return Theme.of(context).colorScheme.primary.withOpacity(0.5);
+    }
+    return Colors.white.withOpacity(0.2);
   }
 
   Color _getDayTextColor(BuildContext context, bool isSelected, bool isToday, bool hasHoliday) {
     if (isSelected) {
       return Colors.white;
     }
-    if (hasHoliday) {
-      return Colors.red;
+    if (isToday) {
+      return Theme.of(context).colorScheme.onSurface.withOpacity(0.96);
     }
-    return Theme.of(context).colorScheme.onSurface;
+    if (hasHoliday) {
+      return Colors.red.shade300;
+    }
+    return Theme.of(context).colorScheme.onSurface.withOpacity(0.88);
   }
 
   Color _getHolidayColor(String type) {
@@ -212,8 +259,8 @@ class ModernCalendarGrid extends StatelessWidget {
     return events.where((event) {
       final eventJalali = JalaliDate.fromGregorian(event.date);
       return eventJalali.year == year &&
-             eventJalali.month == month &&
-             eventJalali.day == day;
+          eventJalali.month == month &&
+          eventJalali.day == day;
     }).toList();
   }
 }
