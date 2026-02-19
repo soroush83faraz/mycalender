@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../providers/calendar_provider.dart';
 import '../models/jalali_date.dart';
+import '../models/event.dart';
 import '../models/holiday.dart';
 import '../widgets/modern_calendar_grid.dart';
 import '../widgets/weekly_calendar_grid.dart';
@@ -36,6 +37,12 @@ class CalendarScreen extends StatelessWidget {
                       children: [
                         _buildMonthHeader(context, provider),
                         _buildCalendarGrid(context, provider),
+                        if (provider.settings.showPrayerTimes &&
+                            provider.selectedDate == null)
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: _buildPrayerTimesCard(context, provider),
+                          ),
                         if (provider.selectedDate != null)
                           _buildSelectedDateInfo(context, provider),
                       ],
@@ -157,7 +164,10 @@ class CalendarScreen extends StatelessWidget {
               ),
               if (provider.currentView != 'year')
                 Text(
-                  CalendarUtils.toPersianNumber(provider.currentDate.year),
+                  CalendarUtils.formatNumber(
+                    provider.currentDate.year,
+                    usePersian: provider.settings.showPersianNumbers,
+                  ),
                   style: TextStyle(
                     fontSize: 14,
                     color: Theme.of(context)
@@ -203,7 +213,10 @@ class CalendarScreen extends StatelessWidget {
       case 'week':
         return 'هفته';
       case 'year':
-        return CalendarUtils.toPersianNumber(provider.currentDate.year);
+        return CalendarUtils.formatNumber(
+          provider.currentDate.year,
+          usePersian: provider.settings.showPersianNumbers,
+        );
       case 'month':
       default:
         return provider.currentDate.getMonthName();
@@ -275,6 +288,9 @@ class CalendarScreen extends StatelessWidget {
   Widget _buildCalendarByView(BuildContext context, CalendarProvider provider) {
     switch (provider.currentView) {
       case 'week':
+        final holidays = provider.settings.showHolidays
+            ? Holiday.getPersianHolidays()
+            : const <Holiday>[];
         return WeeklyCalendarGrid(
           currentDate: provider.selectedDate ?? provider.currentDate,
           selectedDate: provider.selectedDate,
@@ -284,10 +300,15 @@ class CalendarScreen extends StatelessWidget {
             provider
                 .setCurrentDate(JalaliDate(year: year, month: month, day: 1));
           },
-          events: provider.events,
-          holidays: Holiday.getPersianHolidays(),
+          events:
+              provider.settings.showEvents ? provider.events : const <Event>[],
+          holidays: holidays,
+          usePersianNumbers: provider.settings.showPersianNumbers,
         );
       case 'year':
+        final holidays = provider.settings.showHolidays
+            ? Holiday.getPersianHolidays()
+            : const <Holiday>[];
         return YearlyCalendarGrid(
           year: provider.currentDate.year,
           selectedDate: provider.selectedDate,
@@ -296,11 +317,16 @@ class CalendarScreen extends StatelessWidget {
                 .setCurrentDate(JalaliDate(year: year, month: month, day: 1));
             provider.setView('month');
           },
-          events: provider.events,
-          holidays: Holiday.getPersianHolidays(),
+          events:
+              provider.settings.showEvents ? provider.events : const <Event>[],
+          holidays: holidays,
+          usePersianNumbers: provider.settings.showPersianNumbers,
         );
       case 'month':
       default:
+        final holidays = provider.settings.showHolidays
+            ? Holiday.getHolidaysForMonth(provider.currentDate.month)
+            : const <Holiday>[];
         return ModernCalendarGrid(
           year: provider.currentDate.year,
           month: provider.currentDate.month,
@@ -313,8 +339,10 @@ class CalendarScreen extends StatelessWidget {
             );
             provider.setSelectedDate(selectedDate);
           },
-          events: provider.events,
-          holidays: Holiday.getHolidaysForMonth(provider.currentDate.month),
+          events:
+              provider.settings.showEvents ? provider.events : const <Event>[],
+          holidays: holidays,
+          usePersianNumbers: provider.settings.showPersianNumbers,
         );
     }
   }
@@ -322,8 +350,13 @@ class CalendarScreen extends StatelessWidget {
   Widget _buildSelectedDateInfo(
       BuildContext context, CalendarProvider provider) {
     final selectedDate = provider.selectedDate!;
-    final events = provider.getEventsForDate(selectedDate);
-    final holidays = provider.getHolidaysForDate(selectedDate);
+    final events = provider.settings.showEvents
+        ? provider.getEventsForDate(selectedDate)
+        : const <Event>[];
+    final holidays = provider.settings.showHolidays
+        ? provider.getHolidaysForDate(selectedDate)
+        : const <Holiday>[];
+    final selectedGregorianDate = selectedDate.toGregorian();
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -354,12 +387,25 @@ class CalendarScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '${CalendarUtils.toPersianNumber(selectedDate.day)} ${selectedDate.getMonthName()} ${CalendarUtils.toPersianNumber(selectedDate.year)}',
+                    '${CalendarUtils.formatNumber(selectedDate.day, usePersian: provider.settings.showPersianNumbers)} ${selectedDate.getMonthName()} ${CalendarUtils.formatNumber(selectedDate.year, usePersian: provider.settings.showPersianNumbers)}',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (provider.settings.showGregorianCalendar) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '${CalendarUtils.formatNumber(selectedGregorianDate.year, usePersian: provider.settings.showPersianNumbers)}/${CalendarUtils.formatNumber(selectedGregorianDate.month.toString().padLeft(2, '0'), usePersian: provider.settings.showPersianNumbers)}/${CalendarUtils.formatNumber(selectedGregorianDate.day.toString().padLeft(2, '0'), usePersian: provider.settings.showPersianNumbers)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.75),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     JalaliDate.getWeekdayName(
@@ -382,10 +428,74 @@ class CalendarScreen extends StatelessWidget {
           ),
           if (holidays.isNotEmpty) HolidayWidget(holidays: holidays),
           if (events.isNotEmpty) EventListWidget(events: events),
+          if (provider.settings.showPrayerTimes)
+            _buildPrayerTimesCard(context, provider),
         ],
       ),
     );
   }
+
+  Widget _buildPrayerTimesCard(BuildContext context, CalendarProvider provider) {
+    const fallback = <String, String>{
+      'اذان صبح': '05:20',
+      'طلوع خورشید': '06:42',
+      'اذان ظهر': '12:11',
+      'غروب خورشید': '17:53',
+      'اذان مغرب': '19:10',
+    };
+
+    final cityTimes = _cityPrayerTimes[provider.settings.location] ?? fallback;
+
+    return Card(
+      margin: const EdgeInsets.only(top: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'اوقات شرعی (${provider.settings.location})',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...cityTimes.entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(entry.key),
+                    Text(
+                      CalendarUtils.formatNumber(
+                        entry.value,
+                        usePersian: provider.settings.showPersianNumbers,
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static const Map<String, Map<String, String>> _cityPrayerTimes =
+      <String, Map<String, String>>{
+        'Tehran': <String, String>{
+          'اذان صبح': '05:20',
+          'طلوع خورشید': '06:42',
+          'اذان ظهر': '12:11',
+          'غروب خورشید': '17:53',
+          'اذان مغرب': '19:10',
+        },
+      };
 
   Widget _buildFloatingActionButtons(
       BuildContext context, CalendarProvider provider) {

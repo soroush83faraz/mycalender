@@ -18,7 +18,7 @@ class SettingsScreen extends StatelessWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout),
-                tooltip: 'Sign Out',
+                tooltip: 'خروج از حساب',
                 onPressed: provider.isSignedIn
                     ? () => _confirmSignOut(context, provider)
                     : null,
@@ -127,16 +127,6 @@ class SettingsScreen extends StatelessWidget {
               onChanged: (value) {
                 provider.updateSettings(
                   provider.settings.copyWith(showGregorianCalendar: value),
-                );
-              },
-            ),
-            SwitchListTile(
-              title: const Text('نمایش تقویم قمری'),
-              subtitle: const Text('نمایش همزمان تاریخ قمری'),
-              value: provider.settings.showLunarCalendar,
-              onChanged: (value) {
-                provider.updateSettings(
-                  provider.settings.copyWith(showLunarCalendar: value),
                 );
               },
             ),

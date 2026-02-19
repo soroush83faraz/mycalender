@@ -10,6 +10,7 @@ class WeeklyCalendarGrid extends StatelessWidget {
   final Function(int, int, int)? onDaySelected;
   final List<Event> events;
   final List<Holiday> holidays;
+  final bool usePersianNumbers;
 
   const WeeklyCalendarGrid({
     Key? key,
@@ -18,6 +19,7 @@ class WeeklyCalendarGrid extends StatelessWidget {
     this.onDaySelected,
     this.events = const [],
     this.holidays = const [],
+    this.usePersianNumbers = true,
   }) : super(key: key);
 
   @override
@@ -101,7 +103,10 @@ class WeeklyCalendarGrid extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              CalendarUtils.toPersianNumber(date.day),
+              CalendarUtils.formatNumber(
+                date.day,
+                usePersian: usePersianNumbers,
+              ),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.w500,

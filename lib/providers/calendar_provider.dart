@@ -184,7 +184,12 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> updateSettings(AppSettings settings) async {
+    final normalizedDefaultView = _normalizeView(settings.defaultView);
+    final previousDefaultView = _settings.defaultView;
     _settings = settings;
+    if (_normalizeView(previousDefaultView) != normalizedDefaultView) {
+      _currentView = normalizedDefaultView;
+    }
     await _saveSettings();
     notifyListeners();
   }
@@ -526,6 +531,18 @@ class CalendarProvider extends ChangeNotifier {
     final settingsString = prefs.getString('settings');
     if (settingsString != null) {
       _settings = AppSettings.fromJson(json.decode(settingsString));
+      _currentView = _normalizeView(_settings.defaultView);
+    }
+  }
+
+  String _normalizeView(String view) {
+    switch (view) {
+      case 'week':
+      case 'year':
+      case 'month':
+        return view;
+      default:
+        return 'month';
     }
   }
 

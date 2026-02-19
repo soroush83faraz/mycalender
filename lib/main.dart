@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:persian_fonts/persian_fonts.dart';
 import 'firebase_options.dart';
 import 'providers/calendar_provider.dart';
 import 'screens/main_screen.dart';
@@ -21,12 +22,6 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
-  static const List<String> _fontFallbacks = [
-    'Tahoma',
-    'Segoe UI',
-    'Arial',
-    'sans-serif',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +60,9 @@ class MyApp extends StatelessWidget {
     final primaryColor =
         Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
     final baseTheme = ThemeData.light(useMaterial3: true);
-    final textTheme = baseTheme.textTheme.apply(
-      fontFamily: 'Roboto',
-      fontFamilyFallback: _fontFallbacks,
+    final textTheme = PersianFonts.vazirTextTheme.apply(
+      bodyColor: baseTheme.colorScheme.onSurface,
+      displayColor: baseTheme.colorScheme.onSurface,
     );
     return ThemeData(
       useMaterial3: true,
@@ -76,8 +71,6 @@ class MyApp extends StatelessWidget {
         seedColor: primaryColor,
         brightness: Brightness.light,
       ),
-      fontFamily: 'Roboto',
-      fontFamilyFallback: _fontFallbacks,
       textTheme: textTheme,
       primaryTextTheme: textTheme,
       appBarTheme: AppBarTheme(
@@ -101,9 +94,9 @@ class MyApp extends StatelessWidget {
     final primaryColor =
         Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
     final baseTheme = ThemeData.dark(useMaterial3: true);
-    final textTheme = baseTheme.textTheme.apply(
-      fontFamily: 'Roboto',
-      fontFamilyFallback: _fontFallbacks,
+    final textTheme = PersianFonts.vazirTextTheme.apply(
+      bodyColor: baseTheme.colorScheme.onSurface,
+      displayColor: baseTheme.colorScheme.onSurface,
     );
     return ThemeData(
       useMaterial3: true,
@@ -112,8 +105,6 @@ class MyApp extends StatelessWidget {
         seedColor: primaryColor,
         brightness: Brightness.dark,
       ),
-      fontFamily: 'Roboto',
-      fontFamilyFallback: _fontFallbacks,
       textTheme: textTheme,
       primaryTextTheme: textTheme,
       appBarTheme: const AppBarTheme(

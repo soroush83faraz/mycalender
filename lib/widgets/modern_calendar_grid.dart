@@ -13,6 +13,7 @@ class ModernCalendarGrid extends StatelessWidget {
   final Function(int)? onDaySelected;
   final List<Event> events;
   final List<Holiday> holidays;
+  final bool usePersianNumbers;
 
   const ModernCalendarGrid({
     Key? key,
@@ -22,6 +23,7 @@ class ModernCalendarGrid extends StatelessWidget {
     this.onDaySelected,
     this.events = const [],
     this.holidays = const [],
+    this.usePersianNumbers = true,
   }) : super(key: key);
 
   @override
@@ -156,7 +158,7 @@ class ModernCalendarGrid extends StatelessWidget {
           children: [
             Center(
               child: Text(
-                CalendarUtils.toPersianNumber(day),
+                CalendarUtils.formatNumber(day, usePersian: usePersianNumbers),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.w500,

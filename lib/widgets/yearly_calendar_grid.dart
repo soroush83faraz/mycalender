@@ -10,6 +10,7 @@ class YearlyCalendarGrid extends StatelessWidget {
   final Function(int, int)? onMonthSelected;
   final List<Event> events;
   final List<Holiday> holidays;
+  final bool usePersianNumbers;
 
   const YearlyCalendarGrid({
     Key? key,
@@ -18,6 +19,7 @@ class YearlyCalendarGrid extends StatelessWidget {
     this.onMonthSelected,
     this.events = const [],
     this.holidays = const [],
+    this.usePersianNumbers = true,
   }) : super(key: key);
 
   @override
@@ -84,7 +86,10 @@ class YearlyCalendarGrid extends StatelessWidget {
                           color: Theme.of(context).colorScheme.secondary,
                         ),
                         Text(
-                          CalendarUtils.toPersianNumber(monthEvents.length),
+                          CalendarUtils.formatNumber(
+                            monthEvents.length,
+                            usePersian: usePersianNumbers,
+                          ),
                           style: TextStyle(
                             fontSize: 10,
                             color: Theme.of(context).colorScheme.secondary,
@@ -100,7 +105,10 @@ class YearlyCalendarGrid extends StatelessWidget {
                           color: Colors.red,
                         ),
                         Text(
-                          CalendarUtils.toPersianNumber(monthHolidays.length),
+                          CalendarUtils.formatNumber(
+                            monthHolidays.length,
+                            usePersian: usePersianNumbers,
+                          ),
                           style: const TextStyle(
                             fontSize: 10,
                             color: Colors.red,
@@ -165,7 +173,7 @@ class YearlyCalendarGrid extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                CalendarUtils.toPersianNumber(day),
+                CalendarUtils.formatNumber(day, usePersian: usePersianNumbers),
                 style: TextStyle(
                   fontSize: 8,
                   fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,

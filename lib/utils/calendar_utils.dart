@@ -86,6 +86,10 @@ class CalendarUtils {
     return persianNumber.split('').map((e) => englishDigits[e] ?? e).join();
   }
 
+  static String formatNumber(dynamic number, {required bool usePersian}) {
+    return usePersian ? toPersianNumber(number) : number.toString();
+  }
+
   /// Get Persian weekday name by index
   static String getPersianWeekdayName(int weekdayIndex) {
     const List<String> weekdays = [
