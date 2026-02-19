@@ -6,11 +6,22 @@ class CalendarUtils {
     try {
       final jalali = JalaliDate(year: year, month: month, day: 1);
       final gregorian = jalali.toGregorian();
-      int weekday = gregorian.weekday; // 1-7 (Monday-Sunday)
-      return (weekday + 1) % 7; // Convert to Persian weekday (0-6)
+      return gregorianWeekdayToPersianIndex(gregorian.weekday);
     } catch (e) { 
       return 0; // Default to Saturday if conversion fails
     }
+  }
+
+  /// Convert Gregorian weekday index (Mon=1..Sun=7) to Persian index (Sat=0..Fri=6)
+  static int gregorianWeekdayToPersianIndex(int weekday) {
+    return (weekday + 2) % 7;
+  }
+
+  /// Get Persian weekday name directly from a Gregorian date
+  static String getPersianWeekdayNameFromGregorian(DateTime date) {
+    return JalaliDate.getWeekdayName(
+      gregorianWeekdayToPersianIndex(date.weekday),
+    );
   }
 
   /// Get the number of days in a Jalali month

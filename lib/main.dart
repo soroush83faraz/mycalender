@@ -22,9 +22,8 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
   static const List<String> _fontFallbacks = [
-    'NotoNastaliqUrdu',
-    'Segoe UI',
     'Tahoma',
+    'Segoe UI',
     'Arial',
     'sans-serif',
   ];
