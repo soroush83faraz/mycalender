@@ -10,6 +10,7 @@ import '../widgets/weekly_calendar_grid.dart';
 import '../widgets/yearly_calendar_grid.dart';
 import '../widgets/event_list_widget.dart';
 import '../widgets/holiday_widget.dart';
+import '../services/prayer_times_service.dart';
 import '../utils/calendar_utils.dart';
 import 'add_event_screen.dart';
 
@@ -439,15 +440,12 @@ class CalendarScreen extends StatelessWidget {
 
   Widget _buildPrayerTimesCard(
       BuildContext context, CalendarProvider provider) {
-    const fallback = <String, String>{
-      'اذان صبح': '05:20',
-      'طلوع خورشید': '06:42',
-      'اذان ظهر': '12:11',
-      'غروب خورشید': '17:53',
-      'اذان مغرب': '19:10',
-    };
-
-    final cityTimes = _cityPrayerTimes[provider.settings.location] ?? fallback;
+    final targetDate =
+        (provider.selectedDate ?? provider.currentDate).toGregorian();
+    final prayerTimes = PrayerTimesService.calculate(
+      date: targetDate,
+      cityName: provider.settings.location,
+    );
 
     return Card(
       margin: const EdgeInsets.only(top: 12),
@@ -464,17 +462,28 @@ class CalendarScreen extends StatelessWidget {
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              '${targetDate.year}/${targetDate.month.toString().padLeft(2, '0')}/${targetDate.day.toString().padLeft(2, '0')}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
             const SizedBox(height: 10),
-            ...cityTimes.entries.map(
+            ...prayerTimes.times.entries.map(
               (entry) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Text(entry.key),
+                    const SizedBox(width: 12),
                     Text(
                       CalendarUtils.formatNumber(
-                        entry.value,
+                        entry.value == null
+                            ? '--:--'
+                            : '${entry.value!.hour.toString().padLeft(2, '0')}:${entry.value!.minute.toString().padLeft(2, '0')}',
                         usePersian: provider.settings.showPersianNumbers,
                       ),
                       style: const TextStyle(fontWeight: FontWeight.w600),
@@ -488,17 +497,6 @@ class CalendarScreen extends StatelessWidget {
       ),
     );
   }
-
-  static const Map<String, Map<String, String>> _cityPrayerTimes =
-      <String, Map<String, String>>{
-    'Tehran': <String, String>{
-      'اذان صبح': '05:20',
-      'طلوع خورشید': '06:42',
-      'اذان ظهر': '12:11',
-      'غروب خورشید': '17:53',
-      'اذان مغرب': '19:10',
-    },
-  };
 
   Widget _buildFloatingActionButtons(
       BuildContext context, CalendarProvider provider) {
