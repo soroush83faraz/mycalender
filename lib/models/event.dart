@@ -12,7 +12,6 @@ class Event {
   final DateTime? reminderTime;
   final String color;
   final String? cloudId;
-  final String? calendarId;
   final String? createdBy;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -32,7 +31,6 @@ class Event {
     this.reminderTime,
     this.color = '#2196F3',
     this.cloudId,
-    this.calendarId,
     this.createdBy,
     this.createdAt,
     this.updatedAt,
@@ -53,7 +51,6 @@ class Event {
     DateTime? reminderTime,
     String? color,
     String? cloudId,
-    String? calendarId,
     String? createdBy,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -73,7 +70,6 @@ class Event {
       reminderTime: reminderTime ?? this.reminderTime,
       color: color ?? this.color,
       cloudId: cloudId ?? this.cloudId,
-      calendarId: calendarId ?? this.calendarId,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -95,7 +91,6 @@ class Event {
     'reminderTime': reminderTime?.toIso8601String(),
     'color': color,
     'cloudId': cloudId,
-    'calendarId': calendarId,
     'createdBy': createdBy,
     'createdAt': createdAt?.toIso8601String(),
     'updatedAt': updatedAt?.toIso8601String(),
@@ -116,7 +111,6 @@ class Event {
     reminderTime: json['reminderTime'] != null ? DateTime.parse(json['reminderTime']) : null,
     color: json['color'] ?? '#2196F3',
     cloudId: json['cloudId'],
-    calendarId: json['calendarId'],
     createdBy: json['createdBy'],
     createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
     updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,

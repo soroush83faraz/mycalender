@@ -1,13 +1,15 @@
-import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/app_calendar.dart';
 import '../models/calendar_invite.dart';
-import '../models/jalali_date.dart';
 import '../models/event.dart';
 import '../models/holiday.dart';
+import '../models/jalali_date.dart';
 import '../models/settings.dart';
 import '../repositories/firestore_event_store.dart';
 import '../repositories/local_event_store.dart';
@@ -15,7 +17,7 @@ import '../services/auth_service.dart';
 
 class CalendarProvider extends ChangeNotifier {
   static const String _guestUiLoggedOutKey = 'guest_ui_logged_out';
-  static const String _selectedCalendarKeyPrefix = 'selected_calendar_id_';
+  static const String _selectedCalendarKeyPrefix = 'currentCalendarId_';
 
   CalendarProvider({
     LocalEventStore? localEventStore,
@@ -28,7 +30,7 @@ class CalendarProvider extends ChangeNotifier {
 
   JalaliDate _currentDate = JalaliDate.fromGregorian(DateTime.now());
   JalaliDate? _selectedDate;
-  List<Event> _events = [];
+  List<Event> _events = <Event>[];
   List<AppCalendar> _calendars = <AppCalendar>[];
   AppSettings _settings = AppSettings();
   String _currentView = 'month';
@@ -42,12 +44,10 @@ class CalendarProvider extends ChangeNotifier {
   bool _selectedCalendarExists = false;
   bool _selectedCalendarMembershipExists = false;
   String? _activeMembershipRole;
-  String? _bootstrappedUid;
   bool _guestUiLoggedOut = false;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<List<Event>>? _cloudEventsSubscription;
-  StreamSubscription<List<AppCalendar>>? _calendarWatchSubscription;
 
   JalaliDate get currentDate => _currentDate;
   JalaliDate? get selectedDate => _selectedDate;
@@ -57,17 +57,7 @@ class CalendarProvider extends ChangeNotifier {
   String get currentView => _currentView;
   User? get currentUser => _currentUser;
   String? get activeCalendarId => _activeCalendarId;
-  String? get activeCalendarTitle {
-    final id = _activeCalendarId;
-    if (id == null) return null;
-    for (final calendar in _calendars) {
-      if (calendar.id == id) {
-        return calendar.title;
-      }
-    }
-    return null;
-  }
-
+  String? get activeCalendarTitle => _currentUser == null ? null : 'My Calendar';
   String? get lastFirestoreError => _lastFirestoreError;
   bool get isUsingFirestore => _isUsingFirestore;
   bool get isInitialized => _isInitialized;
@@ -75,34 +65,31 @@ class CalendarProvider extends ChangeNotifier {
   bool get isSignedIn => _currentUser != null;
   bool get isGuestUser => _currentUser?.isAnonymous ?? false;
   bool get isGuestUiLoggedOut => _guestUiLoggedOut;
+  int get localEventCount => _localEventCount;
+  int get cloudEventCount => _cloudEventCount;
+  int get cloudCalendarsCount => _currentUser == null ? 0 : 1;
+  bool get selectedCalendarExists => _selectedCalendarExists;
+  bool get selectedCalendarMembershipExists => _selectedCalendarMembershipExists;
+  String? get activeMembershipRole => _activeMembershipRole;
+  bool get canEditActiveCalendarEvents => _currentUser != null;
+  bool get isActiveCalendarOwner => _currentUser != null;
+  bool get hasSelectedCalendar => _selectedCalendarExists;
+
   String get accountStatusLabel {
     if (_currentUser == null) return 'Not signed in';
     if (_currentUser!.isAnonymous) return 'Guest';
     return _currentUser!.email ?? _currentUser!.uid;
   }
 
-  int get localEventCount => _localEventCount;
-  int get cloudEventCount => _cloudEventCount;
-  int get cloudCalendarsCount => _calendars.length;
-  bool get selectedCalendarExists => _selectedCalendarExists;
-  bool get selectedCalendarMembershipExists =>
-      _selectedCalendarMembershipExists;
-  String? get activeMembershipRole => _activeMembershipRole;
+  String get dataModeStatus =>
+      isSignedIn && isUsingFirestore ? 'Cloud (Firestore)' : 'Local fallback';
+
   String roleForCalendar(String calendarId) {
-    for (final calendar in _calendars) {
-      if (calendar.id == calendarId) {
-        return calendar.membershipRole;
-      }
+    if (_currentUser != null && calendarId == _currentUser!.uid) {
+      return 'owner';
     }
     return 'viewer';
   }
-
-  bool get canEditActiveCalendarEvents =>
-      _activeMembershipRole == 'owner' || _activeMembershipRole == 'editor';
-  bool get isActiveCalendarOwner => _activeMembershipRole == 'owner';
-  bool get hasSelectedCalendar => _selectedCalendarExists;
-  String get dataModeStatus =>
-      isSignedIn && isUsingFirestore ? 'Cloud (Firestore)' : 'Local fallback';
 
   List<Event> getEventsForDate(JalaliDate date) {
     return _events.where((event) {
@@ -134,7 +121,10 @@ class CalendarProvider extends ChangeNotifier {
       _currentDate = JalaliDate(year: _currentDate.year + 1, month: 1, day: 1);
     } else {
       _currentDate = JalaliDate(
-          year: _currentDate.year, month: _currentDate.month + 1, day: 1);
+        year: _currentDate.year,
+        month: _currentDate.month + 1,
+        day: 1,
+      );
     }
     notifyListeners();
   }
@@ -144,7 +134,10 @@ class CalendarProvider extends ChangeNotifier {
       _currentDate = JalaliDate(year: _currentDate.year - 1, month: 12, day: 1);
     } else {
       _currentDate = JalaliDate(
-          year: _currentDate.year, month: _currentDate.month - 1, day: 1);
+        year: _currentDate.year,
+        month: _currentDate.month - 1,
+        day: 1,
+      );
     }
     notifyListeners();
   }
@@ -161,40 +154,30 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> addEvent(Event event) async {
-    if (_currentUser != null && _activeMembershipRole == 'viewer') {
-      throw StateError('You have read-only access to this calendar.');
-    }
     _events.add(event);
-    await _localEventStore.saveEvents(_events);
+    await _saveLocalEventsForCurrentScope(_events);
     _localEventCount = _events.length;
     await _upsertCloudEvent(event);
     notifyListeners();
   }
 
   Future<void> updateEvent(Event event) async {
-    if (_currentUser != null && _activeMembershipRole == 'viewer') {
-      throw StateError('You have read-only access to this calendar.');
-    }
     final index = _events.indexWhere((e) => e.id == event.id);
-    if (index != -1) {
-      _events[index] = event;
-      await _localEventStore.saveEvents(_events);
-      _localEventCount = _events.length;
-      await _upsertCloudEvent(event);
-      notifyListeners();
-    }
+    if (index == -1) return;
+    _events[index] = event;
+    await _saveLocalEventsForCurrentScope(_events);
+    _localEventCount = _events.length;
+    await _upsertCloudEvent(event);
+    notifyListeners();
   }
 
   Future<void> deleteEvent(String eventId) async {
-    if (_currentUser != null && _activeMembershipRole == 'viewer') {
-      throw StateError('You have read-only access to this calendar.');
-    }
     final target = _events.cast<Event?>().firstWhere(
           (e) => e?.id == eventId,
           orElse: () => null,
         );
     _events.removeWhere((e) => e.id == eventId);
-    await _localEventStore.saveEvents(_events);
+    await _saveLocalEventsForCurrentScope(_events);
     _localEventCount = _events.length;
     await _softDeleteCloudEvent(target, eventId);
     notifyListeners();
@@ -208,8 +191,9 @@ class CalendarProvider extends ChangeNotifier {
 
   Future<void> loadData() async {
     if (_isInitialized) return;
-    _events = await _localEventStore.loadEvents();
-    _localEventCount = _events.length;
+
+    _events = <Event>[];
+    _localEventCount = 0;
     await _loadSettings();
     await _loadGuestUiLogoutState();
     _currentUser = FirebaseAuth.instance.currentUser;
@@ -225,29 +209,10 @@ class CalendarProvider extends ChangeNotifier {
 
   Future<void> setActiveCalendar(String calendarId) async {
     final uid = _currentUser?.uid;
-    if (_activeCalendarId == calendarId) {
-      if (uid != null) {
-        await _saveSelectedCalendarId(uid: uid, calendarId: calendarId);
-      }
-      return;
-    }
-    _activeCalendarId = calendarId;
-    if (uid != null) {
-      await _saveSelectedCalendarId(uid: uid, calendarId: calendarId);
-    }
-    if (_currentUser != null) {
-      try {
-        await _refreshSelectedCalendarStatus();
-        await _refreshCloudCountForActiveCalendar();
-      } catch (error) {
-        _lastFirestoreError = error.toString();
-      }
-      _subscribeToCloudEvents(calendarId);
-    } else {
-      _selectedCalendarExists = false;
-      _selectedCalendarMembershipExists = false;
-      _activeMembershipRole = null;
-    }
+    if (uid == null) return;
+    _activeCalendarId = uid;
+    await _saveSelectedCalendarId(uid: uid, calendarId: uid);
+    _refreshSingleUserCalendarState();
     notifyListeners();
   }
 
@@ -255,64 +220,19 @@ class CalendarProvider extends ChangeNotifier {
     required String email,
     required String role,
   }) async {
-    if (_currentUser == null) {
-      throw StateError('Please sign in to create invites.');
-    }
-    if (_activeCalendarId == null) {
-      throw StateError('No active calendar selected.');
-    }
-    if (!isActiveCalendarOwner) {
-      throw StateError('Only calendar owners can create invites.');
-    }
-    return _firestoreEventStore.createInvite(_activeCalendarId!, email, role);
+    throw StateError('Calendar sharing is disabled in private mode.');
   }
 
   Future<void> revokeInvite(String inviteId) async {
-    if (_currentUser == null) {
-      throw StateError('Please sign in to revoke invites.');
-    }
-    if (_activeCalendarId == null) {
-      throw StateError('No active calendar selected.');
-    }
-    if (!isActiveCalendarOwner) {
-      throw StateError('Only calendar owners can revoke invites.');
-    }
-    await _firestoreEventStore.revokeInvite(_activeCalendarId!, inviteId);
+    throw StateError('Calendar sharing is disabled in private mode.');
   }
 
   Stream<List<CalendarInvite>> watchPendingInvitesForActiveCalendar() {
-    final calendarId = _activeCalendarId;
-    if (calendarId == null || !isActiveCalendarOwner) {
-      return Stream<List<CalendarInvite>>.value(const <CalendarInvite>[]);
-    }
-    return _firestoreEventStore.watchPendingInvites(calendarId);
+    return Stream<List<CalendarInvite>>.value(const <CalendarInvite>[]);
   }
 
   Future<String> acceptInvite(String inviteCode) async {
-    final user = _currentUser;
-    if (user == null) {
-      throw StateError('Please sign in to join shared calendars.');
-    }
-    if (user.isAnonymous) {
-      throw StateError('Please upgrade to Google to join shared calendars.');
-    }
-
-    final joinedCalendarId =
-        await _firestoreEventStore.acceptInvite(inviteCode.trim());
-
-    final refreshedCalendars =
-        await _firestoreEventStore.fetchCalendarsForUser(user.uid);
-    _calendars = refreshedCalendars;
-
-    if (refreshedCalendars.any((calendar) => calendar.id == joinedCalendarId)) {
-      await setActiveCalendar(joinedCalendarId);
-      return joinedCalendarId;
-    }
-
-    await _refreshSelectedCalendarStatus();
-    await _refreshCloudCountForActiveCalendar();
-    notifyListeners();
-    return _activeCalendarId ?? joinedCalendarId;
+    throw StateError('Calendar sharing is disabled in private mode.');
   }
 
   Future<void> forceSyncLocalToCloud() async {
@@ -321,36 +241,33 @@ class CalendarProvider extends ChangeNotifier {
       throw StateError('User must be signed in to sync local events to cloud.');
     }
     _currentUser = user;
+    _activeCalendarId = user.uid;
+    _refreshSingleUserCalendarState();
 
-    final calendarId = _activeCalendarId ?? await _ensureUserCalendar(user);
-    _subscribeToCloudEvents(calendarId);
-
-    final localEvents = await _localEventStore.loadEvents();
+    final localEvents = await _loadLocalEventsForUid(user.uid);
     final syncedEvents = <Event>[];
-
     for (final event in localEvents) {
       final synced = await _firestoreEventStore.upsertEvent(
-        calendarId: calendarId,
+        uid: user.uid,
         event: event,
       );
       syncedEvents.add(synced);
     }
 
-    await _localEventStore.saveEvents(syncedEvents);
+    await _localEventStore.saveEvents(syncedEvents, uid: user.uid);
     _events = syncedEvents;
     _localEventCount = syncedEvents.length;
-    await _refreshCloudCountForActiveCalendar();
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('cloud_migrated_${user.uid}', true);
-
+    await _refreshCloudCountForActiveUser();
     _isUsingFirestore = true;
     _lastFirestoreError = null;
     notifyListeners();
   }
 
   Future<void> clearLocalCache() async {
-    await _localEventStore.clearEvents();
+    final uid = _currentUser?.uid;
+    if (uid != null) {
+      await _localEventStore.clearEvents(uid: uid);
+    }
     _localEventCount = 0;
     if (_currentUser == null || !_isUsingFirestore) {
       _events = <Event>[];
@@ -362,21 +279,23 @@ class CalendarProvider extends ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       _isUsingFirestore = false;
-      _events = await _localEventStore.loadEvents();
-      _localEventCount = _events.length;
+      _events = <Event>[];
+      _localEventCount = 0;
       _selectedCalendarExists = false;
       _selectedCalendarMembershipExists = false;
       _activeMembershipRole = null;
       notifyListeners();
       return;
     }
-    _currentUser = user;
 
+    _currentUser = user;
+    _activeCalendarId = user.uid;
+    _refreshSingleUserCalendarState();
     try {
-      final refreshedCalendarId = await _ensureUserCalendar(user);
-      await _refreshCloudCountForActiveCalendar();
+      await _firestoreEventStore.ensureUserEventsReady(user);
+      await _refreshCloudCountForActiveUser();
       _lastFirestoreError = null;
-      _subscribeToCloudEvents(refreshedCalendarId);
+      _subscribeToCloudEvents(user.uid);
     } catch (error) {
       await _fallbackToLocal(error);
     }
@@ -426,16 +345,6 @@ class CalendarProvider extends ChangeNotifier {
     _lastFirestoreError = null;
     await _cloudEventsSubscription?.cancel();
     _cloudEventsSubscription = null;
-    await _calendarWatchSubscription?.cancel();
-    _calendarWatchSubscription = null;
-
-    if (kDebugMode) {
-      debugPrint(
-        '[Auth] state changed uid=${user?.uid ?? '(null)'} '
-        'isAnonymous=${user?.isAnonymous ?? false} '
-        'guestUiLoggedOut=$_guestUiLoggedOut',
-      );
-    }
 
     if (user == null) {
       _guestUiLoggedOut = false;
@@ -452,25 +361,23 @@ class CalendarProvider extends ChangeNotifier {
     }
 
     _currentUser = user;
+    _events = await _loadLocalEventsForUid(user.uid);
+    _localEventCount = _events.length;
+    _activeCalendarId = user.uid;
+    await _saveSelectedCalendarId(uid: user.uid, calendarId: user.uid);
+    _refreshSingleUserCalendarState();
+
     if (!user.isAnonymous && _guestUiLoggedOut) {
       _guestUiLoggedOut = false;
       await _saveGuestUiLogoutState();
     }
 
     try {
-      String selectedCalendarId;
-      if (_bootstrappedUid != user.uid || _activeCalendarId == null) {
-        selectedCalendarId = await _ensureUserCalendar(user);
-        _bootstrappedUid = user.uid;
-      } else {
-        selectedCalendarId = _activeCalendarId!;
-        await _refreshSelectedCalendarStatus();
-      }
-
-      await _startCalendarWatch(user);
-      await _refreshCloudCountForActiveCalendar();
-      _subscribeToCloudEvents(selectedCalendarId);
+      await _firestoreEventStore.ensureUserEventsReady(user);
+      await _refreshCloudCountForActiveUser();
+      _subscribeToCloudEvents(user.uid);
       _isUsingFirestore = true;
+      _lastFirestoreError = null;
     } catch (error) {
       await _fallbackToLocal(error);
     }
@@ -478,130 +385,54 @@ class CalendarProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String> _ensureUserCalendar(User user) async {
-    final defaultCalendarId =
-        await _firestoreEventStore.ensureDefaultCalendarForUser(user);
-
-    try {
-      _calendars = await _firestoreEventStore.fetchCalendarsForUser(user.uid);
-    } catch (_) {
-      _calendars = <AppCalendar>[
-        AppCalendar(
-          id: defaultCalendarId,
-          ownerId: user.uid,
-          title: 'My Calendar',
-          color: 'blue',
-          membershipRole: 'owner',
-        ),
-      ];
-    }
-
-    final selectedCalendarId = await _resolvePreferredActiveCalendarId(
-      user: user,
-      calendars: _calendars,
-      defaultCalendarId: defaultCalendarId,
-    );
-    _activeCalendarId = selectedCalendarId;
-    await _saveSelectedCalendarId(
-      uid: user.uid,
-      calendarId: selectedCalendarId,
-    );
-
-    await _refreshSelectedCalendarStatus();
-    return selectedCalendarId;
-  }
-
-  Future<void> _startCalendarWatch(User user) async {
-    await _calendarWatchSubscription?.cancel();
-    _calendarWatchSubscription =
-        _firestoreEventStore.watchMyCalendars(user).listen(
-      (calendars) async {
-        _lastFirestoreError = null;
-        _calendars = calendars;
-        if (_calendars.isEmpty) {
-          _selectedCalendarExists = false;
-          _selectedCalendarMembershipExists = false;
-          _activeMembershipRole = null;
-          return;
-        }
-
-        final previousCalendarId = _activeCalendarId;
-        _activeCalendarId = await _resolvePreferredActiveCalendarId(
-          user: user,
-          calendars: _calendars,
-          defaultCalendarId: user.uid,
-        );
-        if (_activeCalendarId != null) {
-          await _saveSelectedCalendarId(
-            uid: user.uid,
-            calendarId: _activeCalendarId!,
-          );
-        }
-
-        await _refreshSelectedCalendarStatus();
-        await _refreshCloudCountForActiveCalendar();
-        if (_activeCalendarId != null &&
-            previousCalendarId != _activeCalendarId) {
-          _subscribeToCloudEvents(_activeCalendarId!);
-        }
-        notifyListeners();
-      },
-      onError: (Object error) {
-        _lastFirestoreError = error.toString();
-        notifyListeners();
-      },
-    );
-  }
-
-  Future<void> _refreshCloudCountForActiveCalendar() async {
-    final calendarId = _activeCalendarId;
-    if (calendarId == null || _currentUser == null) {
-      _cloudEventCount = 0;
-      return;
-    }
-
-    _cloudEventCount = await _firestoreEventStore.fetchCloudEventCount(
-      calendarId,
-      DateTime(1900),
-      DateTime(2100, 12, 31),
-    );
-  }
-
-  Future<void> _refreshSelectedCalendarStatus() async {
+  void _refreshSingleUserCalendarState() {
     final user = _currentUser;
-    final calendarId = _activeCalendarId;
-    if (user == null || calendarId == null) {
+    if (user == null) {
+      _calendars = <AppCalendar>[];
       _selectedCalendarExists = false;
       _selectedCalendarMembershipExists = false;
       _activeMembershipRole = null;
       return;
     }
 
-    _selectedCalendarExists =
-        await _firestoreEventStore.calendarExists(calendarId);
-    _selectedCalendarMembershipExists =
-        await _firestoreEventStore.hasCalendarMembership(
-      calendarId: calendarId,
-      uid: user.uid,
-    );
-    _activeMembershipRole = await _firestoreEventStore.fetchMembershipRole(
-      calendarId: calendarId,
-      uid: user.uid,
+    _calendars = <AppCalendar>[
+      AppCalendar(
+        id: user.uid,
+        ownerId: user.uid,
+        title: 'My Calendar',
+        color: 'blue',
+        membershipRole: 'owner',
+      ),
+    ];
+    _selectedCalendarExists = true;
+    _selectedCalendarMembershipExists = true;
+    _activeMembershipRole = 'owner';
+  }
+
+  Future<void> _refreshCloudCountForActiveUser() async {
+    final uid = _currentUser?.uid;
+    if (uid == null) {
+      _cloudEventCount = 0;
+      return;
+    }
+    _cloudEventCount = await _firestoreEventStore.fetchCloudEventCount(
+      uid,
+      DateTime(1900),
+      DateTime(2100, 12, 31),
     );
   }
 
-  void _subscribeToCloudEvents(String calendarId) {
+  void _subscribeToCloudEvents(String uid) {
     _cloudEventsSubscription?.cancel();
-
     _cloudEventsSubscription = _firestoreEventStore
-        .watchEvents(calendarId, DateTime(1900), DateTime(2100, 12, 31))
+        .watchEventsForUser(uid, DateTime(1900), DateTime(2100, 12, 31))
         .listen(
       (cloudEvents) async {
         _isUsingFirestore = true;
         _lastFirestoreError = null;
         _cloudEventCount = cloudEvents.length;
         _events = cloudEvents;
-        await _localEventStore.saveEvents(cloudEvents);
+        await _localEventStore.saveEvents(cloudEvents, uid: uid);
         _localEventCount = cloudEvents.length;
         notifyListeners();
       },
@@ -612,21 +443,18 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> _upsertCloudEvent(Event event) async {
-    final user = _currentUser;
-    final calendarId = _activeCalendarId;
-    if (user == null || calendarId == null) {
-      return;
-    }
+    final uid = _currentUser?.uid;
+    if (uid == null) return;
 
     try {
       final syncedEvent = await _firestoreEventStore.upsertEvent(
-        calendarId: calendarId,
+        uid: uid,
         event: event,
       );
       final index = _events.indexWhere((e) => e.id == event.id);
       if (index != -1) {
         _events[index] = syncedEvent;
-        await _localEventStore.saveEvents(_events);
+        await _localEventStore.saveEvents(_events, uid: uid);
         _localEventCount = _events.length;
       }
       _isUsingFirestore = true;
@@ -639,10 +467,8 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   Future<void> _softDeleteCloudEvent(Event? event, String eventId) async {
-    final calendarId = _activeCalendarId;
-    if (_currentUser == null || calendarId == null) {
-      return;
-    }
+    final uid = _currentUser?.uid;
+    if (uid == null) return;
 
     try {
       final targetEvent = event ??
@@ -652,7 +478,7 @@ class CalendarProvider extends ChangeNotifier {
             date: DateTime.fromMillisecondsSinceEpoch(0),
           );
       await _firestoreEventStore.softDeleteEvent(
-        calendarId: calendarId,
+        uid: uid,
         eventId: _firestoreEventStore.resolveDocumentId(targetEvent),
       );
       _isUsingFirestore = true;
@@ -669,7 +495,8 @@ class CalendarProvider extends ChangeNotifier {
     _lastFirestoreError = error.toString();
     _selectedCalendarMembershipExists = false;
     _activeMembershipRole = null;
-    _events = await _localEventStore.loadEvents();
+    final uid = _currentUser?.uid;
+    _events = uid == null ? <Event>[] : await _loadLocalEventsForUid(uid);
     _localEventCount = _events.length;
     notifyListeners();
   }
@@ -677,19 +504,16 @@ class CalendarProvider extends ChangeNotifier {
   Future<void> _applyUiSignedOutState() async {
     await _cloudEventsSubscription?.cancel();
     _cloudEventsSubscription = null;
-    await _calendarWatchSubscription?.cancel();
-    _calendarWatchSubscription = null;
     _currentUser = null;
     _isUsingFirestore = false;
     _activeCalendarId = null;
     _selectedCalendarExists = false;
     _selectedCalendarMembershipExists = false;
     _activeMembershipRole = null;
-    _bootstrappedUid = null;
     _calendars = <AppCalendar>[];
     _cloudEventCount = 0;
-    _events = await _localEventStore.loadEvents();
-    _localEventCount = _events.length;
+    _events = <Event>[];
+    _localEventCount = 0;
   }
 
   Future<void> _saveSettings() async {
@@ -715,45 +539,19 @@ class CalendarProvider extends ChangeNotifier {
     required String calendarId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      '$_selectedCalendarKeyPrefix$uid',
-      calendarId,
-    );
+    await prefs.setString('$_selectedCalendarKeyPrefix$uid', calendarId);
   }
 
-  Future<String?> _loadSelectedCalendarId(String uid) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('$_selectedCalendarKeyPrefix$uid');
+  Future<List<Event>> _loadLocalEventsForUid(String uid) {
+    return _localEventStore.loadEvents(uid: uid);
   }
 
-  Future<String> _resolvePreferredActiveCalendarId({
-    required User user,
-    required List<AppCalendar> calendars,
-    required String defaultCalendarId,
-  }) async {
-    if (calendars.isEmpty) {
-      return defaultCalendarId;
+  Future<void> _saveLocalEventsForCurrentScope(List<Event> events) async {
+    final uid = _currentUser?.uid;
+    if (uid == null) {
+      return;
     }
-
-    final availableCalendarIds =
-        calendars.map((calendar) => calendar.id).toSet();
-    final currentCalendarId = _activeCalendarId;
-    if (currentCalendarId != null &&
-        availableCalendarIds.contains(currentCalendarId)) {
-      return currentCalendarId;
-    }
-
-    final savedCalendarId = await _loadSelectedCalendarId(user.uid);
-    if (savedCalendarId != null &&
-        availableCalendarIds.contains(savedCalendarId)) {
-      return savedCalendarId;
-    }
-
-    if (availableCalendarIds.contains(defaultCalendarId)) {
-      return defaultCalendarId;
-    }
-
-    return calendars.first.id;
+    await _localEventStore.saveEvents(events, uid: uid);
   }
 
   Future<void> _loadGuestUiLogoutState() async {
@@ -765,7 +563,6 @@ class CalendarProvider extends ChangeNotifier {
   void dispose() {
     _authSubscription?.cancel();
     _cloudEventsSubscription?.cancel();
-    _calendarWatchSubscription?.cancel();
     super.dispose();
   }
 }
