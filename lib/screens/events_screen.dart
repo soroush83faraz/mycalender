@@ -4,6 +4,7 @@ import '../providers/calendar_provider.dart';
 import '../models/event.dart';
 import '../models/jalali_date.dart';
 import '../utils/calendar_utils.dart';
+import '../l10n/app_localizations.dart';
 import 'add_event_screen.dart';
 
 class EventsScreen extends StatefulWidget {
@@ -21,12 +22,13 @@ class _EventsScreenState extends State<EventsScreen> {
   Widget build(BuildContext context) {
     return Consumer<CalendarProvider>(
       builder: (context, provider, child) {
+        final l10n = AppLocalizations.of(context);
         final filteredEvents = _getFilteredEvents(provider.events);
         final canEdit = provider.activeMembershipRole != 'viewer';
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('رویدادها'),
+            title: Text(l10n.navEvents),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(120),
               child: Column(
@@ -57,7 +59,7 @@ class _EventsScreenState extends State<EventsScreen> {
                     );
                   }
                 : null,
-            tooltip: canEdit ? null : 'Viewer access: cannot add events',
+            tooltip: canEdit ? null : l10n.viewerCannotAdd,
             child: const Icon(Icons.add),
           ),
         );
@@ -70,7 +72,7 @@ class _EventsScreenState extends State<EventsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: TextField(
         decoration: InputDecoration(
-          hintText: 'جستجو در رویدادها...',
+          hintText: AppLocalizations.of(context).searchEvents,
           prefixIcon: const Icon(Icons.search),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -88,14 +90,15 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Widget _buildCategoryFilter() {
-    const categories = {
-      'all': 'همه',
-      'personal': 'شخصی',
-      'work': 'کاری',
-      'family': 'خانوادگی',
-      'health': 'سلامت',
-      'education': 'آموزشی',
-      'other': 'سایر',
+    final l10n = AppLocalizations.of(context);
+    final categories = {
+      'all': l10n.categoryAll,
+      'personal': l10n.categoryPersonal,
+      'work': l10n.categoryWork,
+      'family': l10n.categoryFamily,
+      'health': l10n.categoryHealth,
+      'education': l10n.categoryEducation,
+      'other': l10n.categoryOther,
     };
 
     return SizedBox(
@@ -133,7 +136,7 @@ class _EventsScreenState extends State<EventsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'هیچ رویدادی یافت نشد',
+            AppLocalizations.of(context).noEventsFound,
             style: TextStyle(
               fontSize: 18,
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -141,7 +144,7 @@ class _EventsScreenState extends State<EventsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'برای افزودن رویداد جدید روی دکمه + کلیک کنید',
+            AppLocalizations.of(context).addEventHint,
             style: TextStyle(
               fontSize: 14,
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
@@ -153,6 +156,7 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Widget _buildEventCard(BuildContext context, Event event) {
+    final l10n = AppLocalizations.of(context);
     final jalaliDate = JalaliDate.fromGregorian(event.date);
     final isUpcoming = event.date.isAfter(DateTime.now());
     final daysDifference = event.date.difference(DateTime.now()).inDays;
@@ -247,10 +251,11 @@ class _EventsScreenState extends State<EventsScreen> {
                         ),
                         child: Text(
                           daysDifference == 0
-                              ? 'امروز'
+                              ? l10n.today
                               : daysDifference == 1
-                                  ? 'فردا'
-                                  : '${CalendarUtils.toPersianNumber(daysDifference)} روز مانده',
+                                  ? l10n.tomorrow
+                                  : l10n.daysLeft(CalendarUtils
+                                      .toPersianNumber(daysDifference)),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,

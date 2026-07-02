@@ -107,7 +107,6 @@ class DateConversionService {
     int totalDays = diff.inDays.abs();
     int years = totalDays ~/ 365;
     int months = (totalDays % 365) ~/ 30;
-    int days = (totalDays % 365) % 30;
 
     return {'years': years, 'months': months, 'days': totalDays};
   }

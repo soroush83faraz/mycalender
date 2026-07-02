@@ -6,6 +6,7 @@ import '../models/event.dart';
 import '../models/jalali_date.dart';
 import '../services/date_conversion_service.dart';
 import '../utils/calendar_utils.dart';
+import '../l10n/app_localizations.dart';
 
 class AddEventScreen extends StatefulWidget {
   final JalaliDate? selectedDate;
@@ -51,9 +52,10 @@ class _AddEventScreenState extends State<AddEventScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.event != null ? 'ویرایش رویداد' : 'افزودن رویداد'),
+        title: Text(widget.event != null ? l10n.editEvent : l10n.addEvent),
         actions: [
           if (widget.event != null)
             IconButton(
@@ -87,16 +89,17 @@ class _AddEventScreenState extends State<AddEventScreen> {
   }
 
   Widget _buildTitleField() {
+    final l10n = AppLocalizations.of(context);
     return TextFormField(
       controller: _titleController,
-      decoration: const InputDecoration(
-        labelText: 'عنوان رویداد',
-        border: OutlineInputBorder(),
-        prefixIcon: Icon(Icons.title),
+      decoration: InputDecoration(
+        labelText: l10n.eventTitle,
+        border: const OutlineInputBorder(),
+        prefixIcon: const Icon(Icons.title),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'لطفا عنوان رویداد را وارد کنید';
+          return l10n.enterEventTitle;
         }
         return null;
       },
@@ -104,13 +107,14 @@ class _AddEventScreenState extends State<AddEventScreen> {
   }
 
   Widget _buildDescriptionField() {
+    final l10n = AppLocalizations.of(context);
     return TextFormField(
       controller: _descriptionController,
       maxLines: 3,
-      decoration: const InputDecoration(
-        labelText: 'توضیحات (اختیاری)',
-        border: OutlineInputBorder(),
-        prefixIcon: Icon(Icons.description),
+      decoration: InputDecoration(
+        labelText: l10n.descriptionOptional,
+        border: const OutlineInputBorder(),
+        prefixIcon: const Icon(Icons.description),
       ),
     );
   }
@@ -121,7 +125,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.calendar_today),
-        title: const Text('تاریخ و زمان'),
+        title: Text(AppLocalizations.of(context).dateAndTime),
         subtitle: Text(
           '${CalendarUtils.toPersianNumber(jalaliDate.day)} ${jalaliDate.getMonthName()} ${CalendarUtils.toPersianNumber(jalaliDate.year)} - ${CalendarUtils.toPersianNumber(_selectedDateTime.hour)}:${CalendarUtils.toPersianNumber(_selectedDateTime.minute.toString().padLeft(2, '0'))}',
         ),
@@ -132,13 +136,14 @@ class _AddEventScreenState extends State<AddEventScreen> {
   }
 
   Widget _buildCategorySelector() {
-    const categories = {
-      'personal': 'شخصی',
-      'work': 'کاری',
-      'family': 'خانوادگی',
-      'health': 'سلامت',
-      'education': 'آموزشی',
-      'other': 'سایر',
+    final l10n = AppLocalizations.of(context);
+    final categories = {
+      'personal': l10n.categoryPersonal,
+      'work': l10n.categoryWork,
+      'family': l10n.categoryFamily,
+      'health': l10n.categoryHealth,
+      'education': l10n.categoryEducation,
+      'other': l10n.categoryOther,
     };
 
     return Card(
@@ -147,9 +152,9 @@ class _AddEventScreenState extends State<AddEventScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'دستهبندی',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              l10n.category,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -181,7 +186,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
           backgroundColor: _selectedColor,
           radius: 12,
         ),
-        title: const Text('رنگ رویداد'),
+        title: Text(AppLocalizations.of(context).eventColor),
         trailing: const Icon(Icons.arrow_forward_ios),
         onTap: _selectColor,
       ),
@@ -189,6 +194,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
   }
 
   Widget _buildReminderSection() {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -196,8 +202,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SwitchListTile(
-              title: const Text('یادآوری'),
-              subtitle: const Text('دریافت اعلان برای این رویداد'),
+              title: Text(l10n.reminder),
+              subtitle: Text(l10n.reminderSubtitle),
               value: _hasReminder,
               onChanged: (value) {
                 setState(() {
@@ -213,11 +219,11 @@ class _AddEventScreenState extends State<AddEventScreen> {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.access_time),
-                title: const Text('زمان یادآوری'),
+                title: Text(l10n.reminderTime),
                 subtitle: Text(
                   _reminderTime != null
                       ? '${CalendarUtils.toPersianNumber(_reminderTime!.hour)}:${CalendarUtils.toPersianNumber(_reminderTime!.minute.toString().padLeft(2, '0'))}'
-                      : 'انتخاب نشده',
+                      : l10n.notSelected,
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: _selectReminderTime,
@@ -239,7 +245,9 @@ class _AddEventScreenState extends State<AddEventScreen> {
         ),
       ),
       child: Text(
-        widget.event != null ? 'ویرایش رویداد' : 'ذخیره رویداد',
+        widget.event != null
+            ? AppLocalizations.of(context).editEvent
+            : AppLocalizations.of(context).saveEvent,
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
@@ -274,12 +282,13 @@ class _AddEventScreenState extends State<AddEventScreen> {
   }
 
   Future<void> _selectColor() async {
+    final l10n = AppLocalizations.of(context);
     Color? color = await showDialog<Color>(
       context: context,
       builder: (context) {
         Color tempColor = _selectedColor;
         return AlertDialog(
-          title: const Text('انتخاب رنگ'),
+          title: Text(l10n.selectColor),
           content: SingleChildScrollView(
             child: ColorPicker(
               pickerColor: _selectedColor,
@@ -291,11 +300,11 @@ class _AddEventScreenState extends State<AddEventScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('لغو'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, tempColor),
-              child: const Text('تایید'),
+              child: Text(l10n.confirm),
             ),
           ],
         );
@@ -359,22 +368,24 @@ class _AddEventScreenState extends State<AddEventScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save event: $error')),
+        SnackBar(
+            content: Text(AppLocalizations.of(context)
+                .failedToSaveEvent(error.toString()))),
       );
     }
   }
 
   void _deleteEvent() {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف رویداد'),
-        content:
-            const Text('آیا مطمئن هستید که میخواهید این رویداد را حذف کنید؟'),
+        title: Text(l10n.deleteEvent),
+        content: Text(l10n.deleteEventConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('لغو'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -389,11 +400,13 @@ class _AddEventScreenState extends State<AddEventScreen> {
                 if (!mounted) return;
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to delete event: $error')),
+                  SnackBar(
+                      content:
+                          Text(l10n.failedToDeleteEvent(error.toString()))),
                 );
               }
             },
-            child: const Text('حذف'),
+            child: Text(l10n.delete),
           ),
         ],
       ),

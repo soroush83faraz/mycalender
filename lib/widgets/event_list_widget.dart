@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/event.dart';
-import '../utils/calendar_utils.dart';
 
 class EventListWidget extends StatelessWidget {
   final List<Event> events;

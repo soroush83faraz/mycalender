@@ -12,6 +12,7 @@ import '../widgets/event_list_widget.dart';
 import '../widgets/holiday_widget.dart';
 import '../services/prayer_times_service.dart';
 import '../utils/calendar_utils.dart';
+import '../l10n/app_localizations.dart';
 import 'add_event_screen.dart';
 
 class CalendarScreen extends StatelessWidget {
@@ -60,62 +61,30 @@ class CalendarScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
+    // Matches the surface-style app bars used across the rest of the app
+    // (styling comes from AppTheme.appBarTheme).
     return SliverAppBar(
-      expandedHeight: 120,
-      floating: false,
       pinned: true,
-      elevation: 0,
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      foregroundColor: Colors.white,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'تقویم فارسی',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.today, color: Colors.white),
-                  onPressed: provider.goToToday,
-                  tooltip: 'امروز',
-                ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.view_module, color: Colors.white),
-                  onSelected: provider.setView,
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                        value: 'month', child: Text('نمای ماهانه')),
-                    const PopupMenuItem(
-                        value: 'week', child: Text('نمای هفتگی')),
-                    const PopupMenuItem(
-                        value: 'year', child: Text('نمای سالانه')),
-                  ],
-                ),
-              ],
-            ),
+      centerTitle: true,
+      title: Text(l10n.appTitle),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.today_outlined),
+          onPressed: provider.goToToday,
+          tooltip: l10n.today,
+        ),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.view_module_outlined),
+          onSelected: provider.setView,
+          itemBuilder: (context) => [
+            PopupMenuItem(value: 'month', child: Text(l10n.monthlyView)),
+            PopupMenuItem(value: 'week', child: Text(l10n.weeklyView)),
+            PopupMenuItem(value: 'year', child: Text(l10n.yearlyView)),
           ],
         ),
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.primary.withOpacity(0.8),
-              ],
-            ),
-          ),
-        ),
-      ),
+        const SizedBox(width: 4),
+      ],
     );
   }
 
@@ -156,7 +125,7 @@ class CalendarScreen extends StatelessWidget {
           Column(
             children: [
               Text(
-                _getHeaderTitle(provider),
+                _getHeaderTitle(context, provider),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -184,7 +153,7 @@ class CalendarScreen extends StatelessWidget {
                     provider.setCurrentDate(today);
                   },
                   child: Text(
-                    'امروز',
+                    AppLocalizations.of(context).today,
                     style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -209,10 +178,10 @@ class CalendarScreen extends StatelessWidget {
     );
   }
 
-  String _getHeaderTitle(CalendarProvider provider) {
+  String _getHeaderTitle(BuildContext context, CalendarProvider provider) {
     switch (provider.currentView) {
       case 'week':
-        return 'هفته';
+        return AppLocalizations.of(context).week;
       case 'year':
         return CalendarUtils.formatNumber(
           provider.currentDate.year,
@@ -289,8 +258,15 @@ class CalendarScreen extends StatelessWidget {
   Widget _buildCalendarByView(BuildContext context, CalendarProvider provider) {
     switch (provider.currentView) {
       case 'week':
+        final base = provider.selectedDate ?? provider.currentDate;
         final holidays = provider.settings.showHolidays
-            ? Holiday.getPersianHolidays()
+            ? [
+                ...Holiday.occurrencesForJalaliMonth(base.year, base.month),
+                if (base.month > 1)
+                  ...Holiday.occurrencesForJalaliMonth(base.year, base.month - 1),
+                if (base.month < 12)
+                  ...Holiday.occurrencesForJalaliMonth(base.year, base.month + 1),
+              ]
             : const <Holiday>[];
         return WeeklyCalendarGrid(
           currentDate: provider.selectedDate ?? provider.currentDate,
@@ -309,7 +285,7 @@ class CalendarScreen extends StatelessWidget {
         );
       case 'year':
         final holidays = provider.settings.showHolidays
-            ? Holiday.getPersianHolidays()
+            ? Holiday.occurrencesForJalaliYear(provider.currentDate.year)
             : const <Holiday>[];
         return YearlyCalendarGrid(
           year: provider.currentDate.year,
@@ -328,7 +304,8 @@ class CalendarScreen extends StatelessWidget {
       case 'month':
       default:
         final holidays = provider.settings.showHolidays
-            ? Holiday.getHolidaysForMonth(provider.currentDate.month)
+            ? Holiday.occurrencesForJalaliMonth(
+                provider.currentDate.year, provider.currentDate.month)
             : const <Holiday>[];
         return ModernCalendarGrid(
           year: provider.currentDate.year,
@@ -380,7 +357,7 @@ class CalendarScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'تاریخ انتخاب شده',
+                        AppLocalizations.of(context).selectedDate,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -442,10 +419,20 @@ class CalendarScreen extends StatelessWidget {
       BuildContext context, CalendarProvider provider) {
     final targetDate =
         (provider.selectedDate ?? provider.currentDate).toGregorian();
-    final prayerTimes = PrayerTimesService.calculate(
-      date: targetDate,
-      cityName: provider.settings.location,
-    );
+    final s = provider.settings;
+    final useCoords =
+        s.useDeviceLocation && s.latitude != null && s.longitude != null;
+    final prayerTimes = useCoords
+        ? PrayerTimesService.calculate(
+            date: targetDate,
+            latitude: s.latitude,
+            longitude: s.longitude,
+            utcOffsetHours: DateTime.now().timeZoneOffset.inMinutes / 60.0,
+          )
+        : PrayerTimesService.calculate(
+            date: targetDate,
+            cityName: s.location,
+          );
 
     return Card(
       margin: const EdgeInsets.only(top: 12),
@@ -455,7 +442,7 @@ class CalendarScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'اوقات شرعی (${provider.settings.location})',
+              AppLocalizations.of(context).prayerTimesFor(prayerTimes.cityName),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -518,7 +505,7 @@ class CalendarScreen extends StatelessWidget {
                   );
                 }
               : null,
-          tooltip: canEdit ? null : 'Viewer access: cannot add events',
+          tooltip: canEdit ? null : AppLocalizations.of(context).viewerCannotAdd,
           child: const Icon(Icons.add),
         ),
         const SizedBox(height: 16),

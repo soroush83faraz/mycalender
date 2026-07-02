@@ -1,0 +1,279 @@
+{
+  "@@locale": "fa",
+  "appTitle": "تقویم فارسی",
+  "navCalendar": "تقویم",
+  "navEvents": "رویدادها",
+  "navTools": "ابزارها",
+  "navSettings": "تنظیمات",
+  "today": "امروز",
+  "tomorrow": "فردا",
+  "past": "گذشته",
+  "week": "هفته",
+  "monthlyView": "نمای ماهانه",
+  "weeklyView": "نمای هفتگی",
+  "yearlyView": "نمای سالانه",
+  "monthly": "ماهانه",
+  "weekly": "هفتگی",
+  "yearly": "سالانه",
+  "selectedDate": "تاریخ انتخاب شده",
+  "prayerTimesFor": "اوقات شرعی ({city})",
+  "@prayerTimesFor": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "currentLocation": "موقعیت فعلی",
+  "daysLeft": "{count} روز مانده",
+  "@daysLeft": {
+    "placeholders": {
+      "count": {"type": "String"}
+    }
+  },
+  "daysPassed": "{count} روز گذشته",
+  "@daysPassed": {
+    "placeholders": {
+      "count": {"type": "String"}
+    }
+  },
+  "daysRemainingLabel": "روز مانده",
+  "searchEvents": "جستجو در رویدادها...",
+  "noEventsFound": "هیچ رویدادی یافت نشد",
+  "addEventHint": "برای افزودن رویداد جدید روی دکمه + کلیک کنید",
+  "categoryAll": "همه",
+  "categoryPersonal": "شخصی",
+  "categoryWork": "کاری",
+  "categoryFamily": "خانوادگی",
+  "categoryHealth": "سلامت",
+  "categoryEducation": "آموزشی",
+  "categoryOther": "سایر",
+  "addEvent": "افزودن رویداد",
+  "editEvent": "ویرایش رویداد",
+  "saveEvent": "ذخیره رویداد",
+  "deleteEvent": "حذف رویداد",
+  "deleteEventConfirm": "آیا مطمئن هستید که می‌خواهید این رویداد را حذف کنید؟",
+  "eventTitle": "عنوان رویداد",
+  "enterEventTitle": "لطفا عنوان رویداد را وارد کنید",
+  "descriptionOptional": "توضیحات (اختیاری)",
+  "dateAndTime": "تاریخ و زمان",
+  "category": "دسته‌بندی",
+  "eventColor": "رنگ رویداد",
+  "reminder": "یادآوری",
+  "reminderSubtitle": "دریافت اعلان برای این رویداد",
+  "reminderTime": "زمان یادآوری",
+  "notSelected": "انتخاب نشده",
+  "selectColor": "انتخاب رنگ",
+  "cancel": "لغو",
+  "confirm": "تایید",
+  "delete": "حذف",
+  "close": "بستن",
+  "continueLabel": "ادامه",
+  "failedToSaveEvent": "ذخیره رویداد ناموفق بود: {error}",
+  "@failedToSaveEvent": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "failedToDeleteEvent": "حذف رویداد ناموفق بود: {error}",
+  "@failedToDeleteEvent": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "settings": "تنظیمات",
+  "signOut": "خروج از حساب",
+  "signOutConfirm": "آیا مطمئن هستید که می‌خواهید خارج شوید؟",
+  "signOutFailed": "خروج ناموفق بود: {error}",
+  "@signOutFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "appearanceTheme": "ظاهر و تم",
+  "autoTheme": "تم خودکار",
+  "autoThemeSub": "تغییر خودکار بر اساس تنظیمات سیستم",
+  "darkMode": "حالت تاریک",
+  "darkModeSub": "استفاده از تم تاریک",
+  "primaryColor": "رنگ اصلی",
+  "primaryColorSub": "انتخاب رنگ اصلی اپلیکیشن",
+  "display": "نمایش",
+  "persianNumbers": "اعداد فارسی",
+  "persianNumbersSub": "نمایش اعداد به صورت فارسی",
+  "showGregorian": "نمایش تقویم میلادی",
+  "showGregorianSub": "نمایش همزمان تاریخ میلادی",
+  "defaultView": "نمای پیش‌فرض",
+  "selectDefaultView": "انتخاب نمای پیش‌فرض",
+  "language": "زبان",
+  "languageSub": "انتخاب زبان برنامه",
+  "persianLang": "فارسی",
+  "englishLang": "English",
+  "notifications": "اعلانات",
+  "enableNotifications": "فعالسازی اعلانات",
+  "enableNotificationsSub": "دریافت اعلان برای رویدادها و یادآورها",
+  "calendarSection": "تقویم",
+  "showHolidays": "نمایش مناسبت‌ها",
+  "showHolidaysSub": "نمایش تعطیلات و مناسبت‌های رسمی",
+  "showEvents": "نمایش رویدادها",
+  "showEventsSub": "نمایش رویدادهای شخصی در تقویم",
+  "prayerTimes": "اوقات شرعی",
+  "prayerTimesSub": "نمایش اوقات شرعی",
+  "useDeviceLocation": "استفاده از موقعیت دستگاه",
+  "useDeviceLocationSub": "محاسبه اوقات شرعی بر اساس موقعیت فعلی",
+  "updateLocation": "به‌روزرسانی موقعیت",
+  "noLocationSaved": "موقعیتی ثبت نشده است",
+  "savedLocation": "موقعیت ثبت‌شده: {coords}",
+  "@savedLocation": {
+    "placeholders": {
+      "coords": {"type": "String"}
+    }
+  },
+  "selectCity": "انتخاب شهر",
+  "locationUpdated": "موقعیت با موفقیت به‌روزرسانی شد",
+  "locationFailed": "دسترسی به موقعیت امکان‌پذیر نشد؛ از شهر انتخابی استفاده می‌شود",
+  "aboutApp": "درباره برنامه",
+  "version": "نسخه",
+  "developer": "توسعه‌دهنده",
+  "developerName": "تیم توسعه تقویم فارسی",
+  "contactUs": "ارتباط با ما",
+  "contactUsSub": "ارسال بازخورد و پیشنهادات",
+  "contactBody": "برای ارسال بازخورد، گزارش باگ یا پیشنهادات خود می‌توانید با ما در ارتباط باشید.\n\nایمیل: support@persiancalendar.com\nتلگرام: @PersianCalendarSupport",
+  "account": "حساب کاربری",
+  "accountStatus": "وضعیت",
+  "upgradeToGoogle": "ارتقا به حساب گوگل",
+  "upgradeToGoogleSub": "اتصال این حساب مهمان به گوگل",
+  "googleSync": "همگام‌سازی با Google Calendar",
+  "googleSyncSub": "ورود و خروج دوطرفه رویدادها با تقویم گوگل",
+  "syncing": "در حال همگام‌سازی با Google Calendar...",
+  "syncDone": "همگام‌سازی انجام شد: {imported} ورودی، {exported} خروجی",
+  "@syncDone": {
+    "placeholders": {
+      "imported": {"type": "String"},
+      "exported": {"type": "String"}
+    }
+  },
+  "syncFailed": "همگام‌سازی ناموفق بود. مطمئن شوید Google Calendar API فعال و دسترسی داده شده است.",
+  "tools": "ابزارها",
+  "occasions": "مناسبت‌ها",
+  "occasionsSub": "مرور و جستجوی مناسبت‌های رسمی، مذهبی، باستانی و جهانی",
+  "searchOccasion": "جستجوی مناسبت...",
+  "noResults": "موردی یافت نشد",
+  "dayOff": "تعطیل",
+  "catOfficial": "رسمی",
+  "catReligious": "مذهبی",
+  "catAncient": "باستانی",
+  "catInternational": "جهانی",
+  "dateConverter": "تبدیل تاریخ",
+  "dateConverterSub": "تبدیل بین تقویم شمسی، میلادی و قمری",
+  "ageCalculator": "محاسبه سن",
+  "ageCalculatorSub": "محاسبه سن بر اساس تاریخ تولد",
+  "dateDifference": "اختلاف دو تاریخ",
+  "dateDifferenceSub": "محاسبه فاصله زمانی بین دو تاریخ",
+  "countdown": "روزشمار",
+  "countdownSub": "شمارش روزهای باقیمانده تا رویداد",
+  "nowruzMoment": "لحظه سال تحویل",
+  "nowruzMomentSub": "نمایش زمان دقیق سال تحویل",
+  "worldClock": "ساعت جهانی",
+  "worldClockSub": "نمایش ساعت شهرهای مختلف جهان",
+  "jalaliCalendar": "شمسی (هجری شمسی)",
+  "gregorianCalendar": "میلادی (گریگوری)",
+  "hijriCalendar": "قمری (هجری قمری)",
+  "selectDate": "انتخاب تاریخ",
+  "selectGregorianDate": "انتخاب تاریخ میلادی",
+  "fromGregorian": "مبدا میلادی",
+  "fromJalali": "مبدا شمسی",
+  "convertFromJalali": "تبدیل از شمسی",
+  "yearLabel": "سال",
+  "monthLabel": "ماه",
+  "dayLabel": "روز",
+  "enterNumericDate": "سال، ماه و روز را به صورت عددی وارد کنید.",
+  "monthRangeError": "ماه باید بین 1 تا 12 باشد.",
+  "dayRangeError": "روز برای این ماه باید بین 1 تا {max} باشد.",
+  "@dayRangeError": {
+    "placeholders": {
+      "max": {"type": "String"}
+    }
+  },
+  "selectBirthDate": "انتخاب تاریخ تولد",
+  "birthDateSelected": "تاریخ تولد انتخاب شده",
+  "yourAge": "سن شما",
+  "ageDifference": "اختلاف سن",
+  "ageResult": "{years} سال، {months} ماه، {days} روز",
+  "@ageResult": {
+    "placeholders": {
+      "years": {"type": "String"},
+      "months": {"type": "String"},
+      "days": {"type": "String"}
+    }
+  },
+  "selectFirstDate": "انتخاب تاریخ اول",
+  "firstDateSelected": "تاریخ اول",
+  "selectSecondDate": "انتخاب تاریخ دوم",
+  "secondDateSelected": "تاریخ دوم",
+  "calculationResult": "نتیجه محاسبه",
+  "distanceDays": "فاصله: {days} روز",
+  "@distanceDays": {
+    "placeholders": {
+      "days": {"type": "String"}
+    }
+  },
+  "equivalentYearsMonths": "معادل: {years} سال و {months} ماه",
+  "@equivalentYearsMonths": {
+    "placeholders": {
+      "years": {"type": "String"},
+      "months": {"type": "String"}
+    }
+  },
+  "selectTargetDate": "انتخاب تاریخ هدف",
+  "targetDateSelected": "تاریخ هدف انتخاب شده",
+  "targetDate": "تاریخ هدف: {date}",
+  "@targetDate": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "loadError": "خطا در بارگیری اطلاعات",
+  "nowruzYear": "نوروز {year}",
+  "@nowruzYear": {
+    "placeholders": {
+      "year": {"type": "String"}
+    }
+  },
+  "todayIsNowruz": "امروز نوروز!",
+  "hoursAndMinutes": "{hours} ساعت و {minutes} دقیقه",
+  "@hoursAndMinutes": {
+    "placeholders": {
+      "hours": {"type": "String"},
+      "minutes": {"type": "String"}
+    }
+  },
+  "exactMoment": "لحظه دقیق: {date}",
+  "@exactMoment": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "daysCount": "{count} روز",
+  "@daysCount": {
+    "placeholders": {
+      "count": {"type": "String"}
+    }
+  },
+  "welcomeTitle": "تقویم فارسی",
+  "continueWithGoogle": "ورود با گوگل",
+  "continueAsGuest": "ورود به عنوان مهمان",
+  "redirectingToGoogle": "در حال انتقال به گوگل...",
+  "googleSignInFailed": "ورود با گوگل ناموفق بود: {error}",
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "guestSignInFailed": "ورود مهمان ناموفق بود: {error}",
+  "@guestSignInFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "guestDiscardWarningTitle": "ورود با گوگل",
+  "guestDiscardWarningBody": "تقویم‌ها و رویدادهای حالت مهمان در همان حالت باقی می‌مانند و به حساب گوگل منتقل نمی‌شوند.",
+  "viewerCannotAdd": "دسترسی مشاهده‌گر: امکان افزودن رویداد نیست"
+}

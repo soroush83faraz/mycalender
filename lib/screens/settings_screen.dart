@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/calendar_provider.dart';
+import '../services/notification_service.dart';
 import 'backend_health_check_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -12,13 +14,14 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<CalendarProvider>(
       builder: (context, provider, child) {
+        final l10n = AppLocalizations.of(context);
         return Scaffold(
           appBar: AppBar(
-            title: const Text('تنظیمات'),
+            title: Text(l10n.settings),
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout),
-                tooltip: 'خروج از حساب',
+                tooltip: l10n.signOut,
                 onPressed: provider.isSignedIn
                     ? () => _confirmSignOut(context, provider)
                     : null,
@@ -47,20 +50,21 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildThemeSection(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'ظاهر و تم',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.appearanceTheme,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('تم خودکار'),
-              subtitle: const Text('تغییر خودکار بر اساس تنظیمات سیستم'),
+              title: Text(l10n.autoTheme),
+              subtitle: Text(l10n.autoThemeSub),
               value: provider.settings.autoTheme,
               onChanged: (value) {
                 provider.updateSettings(
@@ -70,8 +74,8 @@ class SettingsScreen extends StatelessWidget {
             ),
             if (!provider.settings.autoTheme)
               SwitchListTile(
-                title: const Text('حالت تاریک'),
-                subtitle: const Text('استفاده از تم تاریک'),
+                title: Text(l10n.darkMode),
+                subtitle: Text(l10n.darkModeSub),
                 value: provider.settings.isDarkMode,
                 onChanged: (value) {
                   provider.updateSettings(
@@ -80,8 +84,8 @@ class SettingsScreen extends StatelessWidget {
                 },
               ),
             ListTile(
-              title: const Text('رنگ اصلی'),
-              subtitle: const Text('انتخاب رنگ اصلی اپلیکیشن'),
+              title: Text(l10n.primaryColor),
+              subtitle: Text(l10n.primaryColorSub),
               leading: CircleAvatar(
                 backgroundColor: Color(
                   int.parse(
@@ -99,20 +103,21 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildDisplaySection(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'نمایش',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.display,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('اعداد فارسی'),
-              subtitle: const Text('نمایش اعداد به صورت فارسی'),
+              title: Text(l10n.persianNumbers),
+              subtitle: Text(l10n.persianNumbersSub),
               value: provider.settings.showPersianNumbers,
               onChanged: (value) {
                 provider.updateSettings(
@@ -121,8 +126,8 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             SwitchListTile(
-              title: const Text('نمایش تقویم میلادی'),
-              subtitle: const Text('نمایش همزمان تاریخ میلادی'),
+              title: Text(l10n.showGregorian),
+              subtitle: Text(l10n.showGregorianSub),
               value: provider.settings.showGregorianCalendar,
               onChanged: (value) {
                 provider.updateSettings(
@@ -131,10 +136,21 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             ListTile(
-              title: const Text('نمای پیشفرض'),
-              subtitle: Text(_getViewName(provider.settings.defaultView)),
+              title: Text(l10n.defaultView),
+              subtitle: Text(_getViewName(context, provider.settings.defaultView)),
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () => _showViewSelector(context, provider),
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: Text(l10n.language),
+              subtitle: Text(
+                provider.settings.language == 'en'
+                    ? l10n.englishLang
+                    : l10n.persianLang,
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => _showLanguageSelector(context, provider),
             ),
           ],
         ),
@@ -144,25 +160,27 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildNotificationSection(
       BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'اعلانات',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.notifications,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('فعالسازی اعلانات'),
-              subtitle: const Text('دریافت اعلان برای رویدادها و یادآورها'),
+              title: Text(l10n.enableNotifications),
+              subtitle: Text(l10n.enableNotificationsSub),
               value: provider.settings.enableNotifications,
               onChanged: (value) {
                 provider.updateSettings(
                   provider.settings.copyWith(enableNotifications: value),
                 );
+                if (value) NotificationService.requestPermission();
               },
             ),
           ],
@@ -173,20 +191,21 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildCalendarSection(
       BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'تقویم',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.calendarSection,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('نمایش مناسبتها'),
-              subtitle: const Text('نمایش تعطیلات و مناسبتهای رسمی'),
+              title: Text(l10n.showHolidays),
+              subtitle: Text(l10n.showHolidaysSub),
               value: provider.settings.showHolidays,
               onChanged: (value) {
                 provider.updateSettings(
@@ -195,8 +214,8 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             SwitchListTile(
-              title: const Text('نمایش رویدادها'),
-              subtitle: const Text('نمایش رویدادهای شخصی در تقویم'),
+              title: Text(l10n.showEvents),
+              subtitle: Text(l10n.showEventsSub),
               value: provider.settings.showEvents,
               onChanged: (value) {
                 provider.updateSettings(
@@ -205,21 +224,52 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             SwitchListTile(
-              title: const Text('اوقات شرعی'),
-              subtitle: const Text('نمایش اوقات شرعی'),
+              title: Text(l10n.prayerTimes),
+              subtitle: Text(l10n.prayerTimesSub),
               value: provider.settings.showPrayerTimes,
               onChanged: (value) {
                 provider.updateSettings(
                   provider.settings.copyWith(showPrayerTimes: value),
                 );
+                if (value &&
+                    provider.settings.useDeviceLocation &&
+                    provider.settings.latitude == null) {
+                  _refreshLocation(context, provider, silent: true);
+                }
               },
             ),
-            ListTile(
-              title: const Text('موقعیت جغرافیایی'),
-              subtitle: Text(provider.settings.location),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => _showLocationSelector(context, provider),
+            SwitchListTile(
+              title: Text(l10n.useDeviceLocation),
+              subtitle: Text(l10n.useDeviceLocationSub),
+              value: provider.settings.useDeviceLocation,
+              onChanged: (value) {
+                provider.updateSettings(
+                  provider.settings.copyWith(useDeviceLocation: value),
+                );
+                if (value) _refreshLocation(context, provider, silent: true);
+              },
             ),
+            if (provider.settings.useDeviceLocation)
+              ListTile(
+                leading: const Icon(Icons.my_location),
+                title: Text(l10n.updateLocation),
+                subtitle: Text(
+                  provider.settings.latitude != null
+                      ? l10n.savedLocation(
+                          '${provider.settings.latitude!.toStringAsFixed(3)}, '
+                          '${provider.settings.longitude!.toStringAsFixed(3)}')
+                      : l10n.noLocationSaved,
+                ),
+                trailing: const Icon(Icons.refresh),
+                onTap: () => _refreshLocation(context, provider),
+              )
+            else
+              ListTile(
+                title: Text(l10n.selectCity),
+                subtitle: Text(provider.settings.location),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () => _showLocationSelector(context, provider),
+              ),
           ],
         ),
       ),
@@ -227,30 +277,31 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildAboutSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'درباره برنامه',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.aboutApp,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             ListTile(
-              title: const Text('نسخه'),
+              title: Text(l10n.version),
               subtitle: const Text('۱.۰.۰'),
               leading: const Icon(Icons.info),
             ),
             ListTile(
-              title: const Text('توسعهدهنده'),
-              subtitle: const Text('تیم توسعه تقویم فارسی'),
+              title: Text(l10n.developer),
+              subtitle: Text(l10n.developerName),
               leading: const Icon(Icons.person),
             ),
             ListTile(
-              title: const Text('ارتباط با ما'),
-              subtitle: const Text('ارسال بازخورد و پیشنهادات'),
+              title: Text(l10n.contactUs),
+              subtitle: Text(l10n.contactUsSub),
               leading: const Icon(Icons.email),
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () => _showContactDialog(context),
@@ -276,6 +327,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showColorPicker(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
     Color currentColor = Color(
       int.parse(provider.settings.primaryColor.replaceFirst('#', '0xFF')),
     );
@@ -285,7 +337,7 @@ class SettingsScreen extends StatelessWidget {
       builder: (context) {
         Color tempColor = currentColor;
         return AlertDialog(
-          title: const Text('انتخاب رنگ'),
+          title: Text(l10n.selectColor),
           content: SingleChildScrollView(
             child: ColorPicker(
               pickerColor: currentColor,
@@ -297,7 +349,7 @@ class SettingsScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('لغو'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () {
@@ -309,7 +361,7 @@ class SettingsScreen extends StatelessWidget {
                 );
                 Navigator.pop(context);
               },
-              child: const Text('تایید'),
+              child: Text(l10n.confirm),
             ),
           ],
         );
@@ -317,18 +369,54 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showViewSelector(BuildContext context, CalendarProvider provider) {
-    const views = {
-      'month': 'ماهانه',
-      'week': 'هفتگی',
-      'year': 'سالانه',
+  void _showLanguageSelector(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
+    final languages = {
+      'fa': l10n.persianLang,
+      'en': l10n.englishLang,
     };
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('انتخاب نمای پیشفرض'),
+          title: Text(l10n.language),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: languages.entries.map((entry) {
+              return RadioListTile<String>(
+                title: Text(entry.value),
+                value: entry.key,
+                groupValue: provider.settings.language,
+                onChanged: (value) {
+                  if (value != null) {
+                    provider.updateSettings(
+                      provider.settings.copyWith(language: value),
+                    );
+                    Navigator.pop(context);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showViewSelector(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
+    final views = {
+      'month': l10n.monthly,
+      'week': l10n.weekly,
+      'year': l10n.yearly,
+    };
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.selectDefaultView),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: views.entries.map((entry) {
@@ -353,6 +441,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showLocationSelector(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
     const locations = [
       'تهران',
       'مشهد',
@@ -376,7 +465,7 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('انتخاب شهر'),
+          title: Text(l10n.selectCity),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView.builder(
@@ -400,19 +489,33 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _refreshLocation(
+    BuildContext context,
+    CalendarProvider provider, {
+    bool silent = false,
+  }) async {
+    final ok = await provider.refreshDeviceLocation();
+    if (!context.mounted || silent && ok) return;
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? l10n.locationUpdated : l10n.locationFailed),
+      ),
+    );
+  }
+
   void _showContactDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('ارتباط با ما'),
-          content: const Text(
-            'برای ارسال بازخورد، گزارش باگ یا پیشنهادات خود میتوانید با ما در ارتباط باشید.\n\nایمیل: support@persiancalendar.com\nتلگرام: @PersianCalendarSupport',
-          ),
+          title: Text(l10n.contactUs),
+          content: Text(l10n.contactBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('بستن'),
+              child: Text(l10n.close),
             ),
           ],
         );
@@ -421,31 +524,84 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildAccountSection(BuildContext context, CalendarProvider provider) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Account',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.account,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text('Status'),
+              title: Text(l10n.accountStatus),
               subtitle: Text(provider.accountStatusLabel),
             ),
             if (provider.isGuestUser)
               ListTile(
                 leading: const Icon(Icons.upgrade),
-                title: const Text('Upgrade to Google'),
-                subtitle: const Text('Link this Guest account to Google'),
+                title: Text(l10n.upgradeToGoogle),
+                subtitle: Text(l10n.upgradeToGoogleSub),
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () => _handleUpgradeToGoogle(context, provider),
               ),
+            if (provider.isSignedIn && !provider.isGuestUser)
+              ListTile(
+                leading: const Icon(Icons.sync),
+                title: Text(l10n.googleSync),
+                subtitle: Text(l10n.googleSyncSub),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () => _syncGoogleCalendar(context, provider),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _syncGoogleCalendar(
+    BuildContext context,
+    CalendarProvider provider,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Flexible(child: Text(l10n.syncing)),
+          ],
+        ),
+      ),
+    );
+
+    final result = await provider.syncWithGoogleCalendar();
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.success
+              ? l10n.syncDone(
+                  result.imported.toString(),
+                  result.exported.toString(),
+                )
+              : l10n.syncFailed,
         ),
       ),
     );
@@ -455,19 +611,20 @@ class SettingsScreen extends StatelessWidget {
     BuildContext context,
     CalendarProvider provider,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
+        title: Text(l10n.signOut),
+        content: Text(l10n.signOutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sign Out'),
+            child: Text(l10n.signOut),
           ),
         ],
       ),
@@ -480,7 +637,7 @@ class SettingsScreen extends StatelessWidget {
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign out failed: $error')),
+        SnackBar(content: Text(l10n.signOutFailed(error.toString()))),
       );
     }
   }
@@ -606,16 +763,17 @@ class SettingsScreen extends StatelessWidget {
     return decision ?? false;
   }
 
-  String _getViewName(String view) {
+  String _getViewName(BuildContext context, String view) {
+    final l10n = AppLocalizations.of(context);
     switch (view) {
       case 'month':
-        return 'ماهانه';
+        return l10n.monthly;
       case 'week':
-        return 'هفتگی';
+        return l10n.weekly;
       case 'year':
-        return 'سالانه';
+        return l10n.yearly;
       default:
-        return 'ماهانه';
+        return l10n.monthly;
     }
   }
 

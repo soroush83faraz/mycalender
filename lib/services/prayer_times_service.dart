@@ -127,43 +127,61 @@ class PrayerTimesService {
     ),
   ];
 
+  /// Computes prayer times (Tehran / Institute of Geophysics convention).
+  ///
+  /// If [latitude]/[longitude] are supplied (e.g. from device GPS) they are
+  /// used directly; otherwise the coordinates of [cityName] are used. When
+  /// coordinates are supplied, pass [utcOffsetHours] for the correct local
+  /// clock (defaults to Iran's +3.5 when omitted).
   static PrayerTimesResult calculate({
     required DateTime date,
-    required String cityName,
+    String cityName = 'تهران',
+    double? latitude,
+    double? longitude,
+    double? utcOffsetHours,
+    String? label,
   }) {
+    final bool useCoords = latitude != null && longitude != null;
     final city = _resolveCity(cityName);
+    final double lat = useCoords ? latitude : city.latitude;
+    final double lon = useCoords ? longitude : city.longitude;
+    final double offset = utcOffsetHours ?? _iranUtcOffsetHours;
     final localDate = DateTime(date.year, date.month, date.day);
 
     final fajr = _timeForSolarZenith(
       date: localDate,
-      latitude: city.latitude,
-      longitude: city.longitude,
+      latitude: lat,
+      longitude: lon,
       zenithDegrees: 108.0,
       isMorning: true,
+      offset: offset,
     );
     final sunrise = _timeForSolarZenith(
       date: localDate,
-      latitude: city.latitude,
-      longitude: city.longitude,
+      latitude: lat,
+      longitude: lon,
       zenithDegrees: 90.833,
       isMorning: true,
+      offset: offset,
     );
     final dhuhr = _solarNoon(
       date: localDate,
-      longitude: city.longitude,
+      longitude: lon,
+      offset: offset,
     );
     final sunset = _timeForSolarZenith(
       date: localDate,
-      latitude: city.latitude,
-      longitude: city.longitude,
+      latitude: lat,
+      longitude: lon,
       zenithDegrees: 90.833,
       isMorning: false,
+      offset: offset,
     );
     final maghrib =
         sunset == null ? null : sunset.add(const Duration(minutes: 12));
 
     return PrayerTimesResult(
-      cityName: city.name,
+      cityName: label ?? (useCoords ? 'موقعیت فعلی' : city.name),
       date: localDate,
       times: <String, DateTime?>{
         'اذان صبح': fajr,
@@ -174,6 +192,10 @@ class PrayerTimesService {
       },
     );
   }
+
+  /// City names available for manual selection in settings.
+  static List<String> get cityNames =>
+      _cities.map((c) => c.name).toList(growable: false);
 
   static _CityCoordinate _resolveCity(String rawCityName) {
     final normalized = _normalize(rawCityName);
@@ -202,6 +224,7 @@ class PrayerTimesService {
     required double longitude,
     required double zenithDegrees,
     required bool isMorning,
+    required double offset,
   }) {
     final dayOfYear = _dayOfYear(date);
     final decl = _solarDeclination(dayOfYear);
@@ -220,8 +243,7 @@ class PrayerTimesService {
 
     final hourAngle = math.acos(cosHourAngle);
     final minutesFromNoon = _radToDeg(hourAngle) * 4.0;
-    final solarNoonMinutes =
-        720 - (4 * longitude) - eqTime + (_iranUtcOffsetHours * 60);
+    final solarNoonMinutes = 720 - (4 * longitude) - eqTime + (offset * 60);
     final eventMinutes = isMorning
         ? solarNoonMinutes - minutesFromNoon
         : solarNoonMinutes + minutesFromNoon;
@@ -232,11 +254,11 @@ class PrayerTimesService {
   static DateTime _solarNoon({
     required DateTime date,
     required double longitude,
+    required double offset,
   }) {
     final dayOfYear = _dayOfYear(date);
     final eqTime = _equationOfTime(dayOfYear);
-    final solarNoonMinutes =
-        720 - (4 * longitude) - eqTime + (_iranUtcOffsetHours * 60);
+    final solarNoonMinutes = 720 - (4 * longitude) - eqTime + (offset * 60);
     return _minutesToDateTime(date, solarNoonMinutes);
   }
 

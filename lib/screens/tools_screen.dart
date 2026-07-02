@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../services/date_conversion_service.dart';
 import '../services/nowruz_service.dart';
 import '../models/jalali_date.dart';
 import '../utils/calendar_utils.dart';
+import 'occasions_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({Key? key}) : super(key: key);
@@ -14,52 +16,63 @@ class ToolsScreen extends StatefulWidget {
 class _ToolsScreenState extends State<ToolsScreen> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ابزارها'),
+        title: Text(l10n.tools),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildToolCard(
             context,
-            'تبدیل تاریخ',
-            'تبدیل بین تقویم شمسی، میلادی و قمری',
+            l10n.occasions,
+            l10n.occasionsSub,
+            Icons.celebration_outlined,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const OccasionsScreen()),
+            ),
+          ),
+          _buildToolCard(
+            context,
+            l10n.dateConverter,
+            l10n.dateConverterSub,
             Icons.swap_horiz,
             () => _showDateConverter(context),
           ),
           _buildToolCard(
             context,
-            'محاسبه سن',
-            'محاسبه سن بر اساس تاریخ تولد',
+            l10n.ageCalculator,
+            l10n.ageCalculatorSub,
             Icons.cake,
             () => _showAgeCalculator(context),
           ),
           _buildToolCard(
             context,
-            'اختلاف دو تاریخ',
-            'محاسبه فاصله زمانی بین دو تاریخ',
+            l10n.dateDifference,
+            l10n.dateDifferenceSub,
             Icons.date_range,
             () => _showDateDifference(context),
           ),
           _buildToolCard(
             context,
-            'روزشمار',
-            'شمارش روزهای باقیمانده تا رویداد',
+            l10n.countdown,
+            l10n.countdownSub,
             Icons.timer,
             () => _showCountdown(context),
           ),
           _buildToolCard(
             context,
-            'لحظه سال تحویل',
-            'نمایش زمان دقیق سال تحویل',
+            l10n.nowruzMoment,
+            l10n.nowruzMomentSub,
             Icons.celebration,
             () => _showNewYearCountdown(context),
           ),
           _buildToolCard(
             context,
-            'ساعت جهانی',
-            'نمایش ساعت شهرهای مختلف جهان',
+            l10n.worldClock,
+            l10n.worldClockSub,
             Icons.public,
             () => _showWorldClock(context),
           ),
@@ -194,15 +207,16 @@ class _DateConverterWidgetState extends State<DateConverterWidget> {
     final jalali = JalaliDate.fromGregorian(selectedDate);
     final hijri = DateConversionService.gregorianToHijri(selectedDate);
     final hijriMonths = DateConversionService.getHijriMonthNames();
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'تبدیل تاریخ',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            l10n.dateConverter,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -219,23 +233,23 @@ class _DateConverterWidgetState extends State<DateConverterWidget> {
                 });
               }
             },
-            child: const Text('انتخاب تاریخ'),
+            child: Text(l10n.selectDate),
           ),
           const SizedBox(height: 24),
           _buildDateCard(
-            'شمسی (هجری شمسی)',
+            l10n.jalaliCalendar,
             '${CalendarUtils.toPersianNumber(jalali.day)} ${jalali.getMonthName()} ${CalendarUtils.toPersianNumber(jalali.year)}',
             Icons.wb_sunny,
             Colors.orange,
           ),
           _buildDateCard(
-            'میلادی (گریگوری)',
+            l10n.gregorianCalendar,
             '${selectedDate.day} ${_getGregorianMonthName(selectedDate.month)} ${selectedDate.year}',
             Icons.calendar_today,
             Colors.blue,
           ),
           _buildDateCard(
-            'قمری (هجری قمری)',
+            l10n.hijriCalendar,
             '${CalendarUtils.toPersianNumber(hijri['day']!)} ${hijriMonths[hijri['month']! - 1]} ${CalendarUtils.toPersianNumber(hijri['year']!)}',
             Icons.nightlight_round,
             Colors.green,
@@ -328,22 +342,23 @@ class _BidirectionalDateConverterWidgetState
     final jalali = JalaliDate.fromGregorian(selectedDate);
     final hijri = DateConversionService.gregorianToHijri(selectedDate);
     final hijriMonths = DateConversionService.getHijriMonthNames();
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'تبدیل تاریخ',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            l10n.dateConverter,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
                 child: ChoiceChip(
-                  label: const Text('مبدا میلادی'),
+                  label: Text(l10n.fromGregorian),
                   selected: sourceType == 'gregorian',
                   onSelected: (_) {
                     setState(() {
@@ -356,7 +371,7 @@ class _BidirectionalDateConverterWidgetState
               const SizedBox(width: 8),
               Expanded(
                 child: ChoiceChip(
-                  label: const Text('مبدا شمسی'),
+                  label: Text(l10n.fromJalali),
                   selected: sourceType == 'jalali',
                   onSelected: (_) {
                     setState(() {
@@ -385,7 +400,7 @@ class _BidirectionalDateConverterWidgetState
                   });
                 }
               },
-              child: const Text('انتخاب تاریخ میلادی'),
+              child: Text(l10n.selectGregorianDate),
             ),
           if (sourceType == 'jalali') ...[
             Row(
@@ -394,7 +409,7 @@ class _BidirectionalDateConverterWidgetState
                   child: TextField(
                     controller: _jalaliYearController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'سال'),
+                    decoration: InputDecoration(labelText: l10n.yearLabel),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -402,7 +417,7 @@ class _BidirectionalDateConverterWidgetState
                   child: TextField(
                     controller: _jalaliMonthController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'ماه'),
+                    decoration: InputDecoration(labelText: l10n.monthLabel),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -410,7 +425,7 @@ class _BidirectionalDateConverterWidgetState
                   child: TextField(
                     controller: _jalaliDayController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'روز'),
+                    decoration: InputDecoration(labelText: l10n.dayLabel),
                   ),
                 ),
               ],
@@ -421,7 +436,7 @@ class _BidirectionalDateConverterWidgetState
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _applyJalaliInput,
-                    child: const Text('تبدیل از شمسی'),
+                    child: Text(l10n.convertFromJalali),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -434,7 +449,7 @@ class _BidirectionalDateConverterWidgetState
                         _syncJalaliInputsFromSelectedDate();
                       });
                     },
-                    child: const Text('امروز'),
+                    child: Text(l10n.today),
                   ),
                 ),
               ],
@@ -452,19 +467,19 @@ class _BidirectionalDateConverterWidgetState
           ],
           const SizedBox(height: 24),
           _buildDateCard(
-            'شمسی (هجری شمسی)',
+            l10n.jalaliCalendar,
             '${CalendarUtils.toPersianNumber(jalali.day)} ${jalali.getMonthName()} ${CalendarUtils.toPersianNumber(jalali.year)}',
             Icons.wb_sunny,
             Colors.orange,
           ),
           _buildDateCard(
-            'میلادی (گریگوری)',
+            l10n.gregorianCalendar,
             '${selectedDate.day} ${_getGregorianMonthName(selectedDate.month)} ${selectedDate.year}',
             Icons.calendar_today,
             Colors.blue,
           ),
           _buildDateCard(
-            'قمری (هجری قمری)',
+            l10n.hijriCalendar,
             '${CalendarUtils.toPersianNumber(hijri['day']!)} ${hijriMonths[hijri['month']! - 1]} ${CalendarUtils.toPersianNumber(hijri['year']!)}',
             Icons.nightlight_round,
             Colors.green,
@@ -535,20 +550,21 @@ class _BidirectionalDateConverterWidgetState
   }
 
   void _applyJalaliInput() {
+    final l10n = AppLocalizations.of(context);
     final year = int.tryParse(_normalizeDigits(_jalaliYearController.text));
     final month = int.tryParse(_normalizeDigits(_jalaliMonthController.text));
     final day = int.tryParse(_normalizeDigits(_jalaliDayController.text));
 
     if (year == null || month == null || day == null) {
       setState(() {
-        _jalaliError = 'سال، ماه و روز را به صورت عددی وارد کنید.';
+        _jalaliError = l10n.enterNumericDate;
       });
       return;
     }
 
     if (month < 1 || month > 12) {
       setState(() {
-        _jalaliError = 'ماه باید بین 1 تا 12 باشد.';
+        _jalaliError = l10n.monthRangeError;
       });
       return;
     }
@@ -556,7 +572,7 @@ class _BidirectionalDateConverterWidgetState
     final maxDay = CalendarUtils.getDaysInMonth(year, month);
     if (day < 1 || day > maxDay) {
       setState(() {
-        _jalaliError = 'روز برای این ماه باید بین 1 تا $maxDay باشد.';
+        _jalaliError = l10n.dayRangeError(maxDay.toString());
       });
       return;
     }
@@ -592,14 +608,15 @@ class _AgeCalculatorWidgetState extends State<AgeCalculatorWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'محاسبه سن',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            l10n.ageCalculator,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -616,11 +633,11 @@ class _AgeCalculatorWidgetState extends State<AgeCalculatorWidget> {
                 });
               }
             },
-            child: Text(birthDate != null ? 'تاریخ تولد انتخاب شده' : 'انتخاب تاریخ تولد'),
+            child: Text(birthDate != null ? l10n.birthDateSelected : l10n.selectBirthDate),
           ),
           if (birthDate != null) ...[
             const SizedBox(height: 16),
-            _buildAgeResult(birthDate!, 'سن شما'),
+            _buildAgeResult(birthDate!, l10n.yourAge),
           ],
           if (birthDate != null && secondBirthDate != null) ...[
             const SizedBox(height: 16),
@@ -633,8 +650,9 @@ class _AgeCalculatorWidgetState extends State<AgeCalculatorWidget> {
   }
 
   Widget _buildAgeResult(DateTime birthDate, String title) {
+    final l10n = AppLocalizations.of(context);
     final age = DateConversionService.calculateAge(birthDate, DateTime.now());
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -647,7 +665,7 @@ class _AgeCalculatorWidgetState extends State<AgeCalculatorWidget> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${CalendarUtils.toPersianNumber(age['years']!)} سال، ${CalendarUtils.toPersianNumber(age['months']!)} ماه، ${CalendarUtils.toPersianNumber(age['days']!)} روز',
+              l10n.ageResult(CalendarUtils.toPersianNumber(age['years']!), CalendarUtils.toPersianNumber(age['months']!), CalendarUtils.toPersianNumber(age['days']!)),
               style: const TextStyle(fontSize: 14),
             ),
           ],
@@ -666,9 +684,9 @@ class _AgeCalculatorWidgetState extends State<AgeCalculatorWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'اختلاف سن',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              AppLocalizations.of(context).ageDifference,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -695,14 +713,15 @@ class _DateDifferenceWidgetState extends State<DateDifferenceWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'اختلاف دو تاریخ',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            l10n.dateDifference,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           Row(
@@ -722,7 +741,7 @@ class _DateDifferenceWidgetState extends State<DateDifferenceWidget> {
                       });
                     }
                   },
-                  child: Text(firstDate != null ? 'تاریخ اول' : 'انتخاب تاریخ اول'),
+                  child: Text(firstDate != null ? l10n.firstDateSelected : l10n.selectFirstDate),
                 ),
               ),
               const SizedBox(width: 16),
@@ -741,7 +760,7 @@ class _DateDifferenceWidgetState extends State<DateDifferenceWidget> {
                       });
                     }
                   },
-                  child: Text(secondDate != null ? 'تاریخ دوم' : 'انتخاب تاریخ دوم'),
+                  child: Text(secondDate != null ? l10n.secondDateSelected : l10n.selectSecondDate),
                 ),
               ),
             ],
@@ -757,25 +776,26 @@ class _DateDifferenceWidgetState extends State<DateDifferenceWidget> {
   }
 
   Widget _buildDifferenceResult() {
+    final l10n = AppLocalizations.of(context);
     final diff = DateConversionService.dateDifference(firstDate!, secondDate!);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'نتیجه محاسبه',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              l10n.calculationResult,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'فاصله: ${CalendarUtils.toPersianNumber(diff['days']!)} روز',
+              l10n.distanceDays(CalendarUtils.toPersianNumber(diff['days']!)),
               style: const TextStyle(fontSize: 14),
             ),
             Text(
-              'معادل: ${CalendarUtils.toPersianNumber(diff['years']!)} سال و ${CalendarUtils.toPersianNumber(diff['months']!)} ماه',
+              l10n.equivalentYearsMonths(CalendarUtils.toPersianNumber(diff['years']!), CalendarUtils.toPersianNumber(diff['months']!)),
               style: const TextStyle(fontSize: 14),
             ),
           ],
@@ -798,14 +818,15 @@ class _CountdownWidgetState extends State<CountdownWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'روزشمار',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            l10n.countdown,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -822,7 +843,7 @@ class _CountdownWidgetState extends State<CountdownWidget> {
                 });
               }
             },
-            child: Text(targetDate != null ? 'تاریخ هدف انتخاب شده' : 'انتخاب تاریخ هدف'),
+            child: Text(targetDate != null ? l10n.targetDateSelected : l10n.selectTargetDate),
           ),
           if (targetDate != null) ...[
             const SizedBox(height: 24),
@@ -835,25 +856,26 @@ class _CountdownWidgetState extends State<CountdownWidget> {
   }
 
   Widget _buildCountdownResult() {
+    final l10n = AppLocalizations.of(context);
     final difference = targetDate!.difference(DateTime.now()).inDays;
     final jalaliTarget = JalaliDate.fromGregorian(targetDate!);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             Text(
-              'تاریخ هدف: ${CalendarUtils.toPersianNumber(jalaliTarget.day)} ${jalaliTarget.getMonthName()} ${CalendarUtils.toPersianNumber(jalaliTarget.year)}',
+              l10n.targetDate('${CalendarUtils.toPersianNumber(jalaliTarget.day)} ${jalaliTarget.getMonthName()} ${CalendarUtils.toPersianNumber(jalaliTarget.year)}'),
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 8),
             Text(
-              difference > 0 
-                  ? '${CalendarUtils.toPersianNumber(difference)} روز مانده'
+              difference > 0
+                  ? l10n.daysLeft(CalendarUtils.toPersianNumber(difference))
                   : difference == 0
-                      ? 'امروز!'
-                      : '${CalendarUtils.toPersianNumber(difference.abs())} روز گذشته',
+                      ? l10n.today
+                      : l10n.daysPassed(CalendarUtils.toPersianNumber(difference.abs())),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -886,8 +908,7 @@ class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
 
   Future<void> _loadExactNowruzTime() async {
     final now = DateTime.now();
-    final currentJalali = JalaliDate.fromGregorian(now);
-    
+
     // Determine which year's Nowruz to show
     final currentYear = now.year;
     final thisYearNowruz = await NowruzService.getExactNowruzTime(currentYear);
@@ -905,6 +926,7 @@ class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (isLoading) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -917,7 +939,7 @@ class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
     if (exactNowruzTime == null) {
       return Container(
         padding: const EdgeInsets.all(24),
-        child: const Text('خطا در بارگیری اطلاعات'),
+        child: Text(l10n.loadError),
       );
     }
 
@@ -936,7 +958,7 @@ class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'نوروز ${CalendarUtils.toPersianNumber(nextJalaliYear)}',
+            l10n.nowruzYear(CalendarUtils.toPersianNumber(nextJalaliYear)),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
@@ -947,7 +969,7 @@ class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
                 children: [
                   if (daysUntilNewYear > 0) ...[
                     Text(
-                      '${CalendarUtils.toPersianNumber(daysUntilNewYear)} روز',
+                      l10n.daysCount(CalendarUtils.toPersianNumber(daysUntilNewYear)),
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -955,13 +977,13 @@ class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
                       ),
                     ),
                     Text(
-                      '${CalendarUtils.toPersianNumber(hoursLeft)} ساعت و ${CalendarUtils.toPersianNumber(minutesLeft)} دقیقه',
+                      l10n.hoursAndMinutes(CalendarUtils.toPersianNumber(hoursLeft), CalendarUtils.toPersianNumber(minutesLeft)),
                       style: const TextStyle(fontSize: 16),
                     ),
                   ] else if (daysUntilNewYear == 0) ...[
-                    const Text(
-                      'امروز نوروز!',
-                      style: TextStyle(
+                    Text(
+                      l10n.todayIsNowruz,
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.orange,
@@ -970,7 +992,7 @@ class _NewYearCountdownWidgetState extends State<NewYearCountdownWidget> {
                   ],
                   const SizedBox(height: 8),
                   Text(
-                    'لحظه دقیق: ${CalendarUtils.toPersianNumber(exactNowruzTime!.day)} مارس - ${CalendarUtils.toPersianNumber(exactNowruzTime!.hour)}:${CalendarUtils.toPersianNumber(exactNowruzTime!.minute.toString().padLeft(2, '0'))}',
+                    l10n.exactMoment('${CalendarUtils.toPersianNumber(exactNowruzTime!.day)} مارس - ${CalendarUtils.toPersianNumber(exactNowruzTime!.hour)}:${CalendarUtils.toPersianNumber(exactNowruzTime!.minute.toString().padLeft(2, '0'))}'),
                     style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
@@ -1005,9 +1027,9 @@ class WorldClockWidget extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'ساعت جهانی',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context).worldClock,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           ...cities.entries.map((entry) {

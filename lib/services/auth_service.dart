@@ -28,6 +28,45 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _googleInitialized = false;
 
+  /// OAuth scope required for two-way Google Calendar sync.
+  static const String calendarScope =
+      'https://www.googleapis.com/auth/calendar.events';
+
+  String? _calendarAccessToken;
+  String? get calendarAccessToken => _calendarAccessToken;
+
+  /// Requests the Google Calendar OAuth scope and returns an access token that
+  /// can be used against the Calendar REST API. Returns null if unavailable.
+  ///
+  /// NOTE: the Google Cloud project must have the Google Calendar API enabled
+  /// and the OAuth consent screen configured (with the signing-in user added
+  /// as a test user) for this to succeed.
+  Future<String?> requestCalendarAccess() async {
+    try {
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider()..addScope(calendarScope);
+        final result = await _auth.signInWithPopup(provider);
+        final oauth = result.credential as OAuthCredential?;
+        _calendarAccessToken = oauth?.accessToken;
+        return _calendarAccessToken;
+      }
+
+      await _ensureGoogleInitializedForNative();
+      final account = await GoogleSignIn.instance.authenticate(
+        scopeHint: const <String>[calendarScope],
+      );
+      final authorization =
+          await account.authorizationClient.authorizeScopes(
+        const <String>[calendarScope],
+      );
+      _calendarAccessToken = authorization.accessToken;
+      return _calendarAccessToken;
+    } catch (error) {
+      debugPrint('requestCalendarAccess failed: $error');
+      return null;
+    }
+  }
+
   Future<AuthUpgradeResult> signInOrUpgradeWithGoogle() async {
     final currentUser = _auth.currentUser;
     if (currentUser != null && currentUser.isAnonymous) {

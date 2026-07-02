@@ -91,6 +91,7 @@ class WeeklyCalendarGrid extends StatelessWidget {
         .where((h) => h.month == date.month && h.day == date.day)
         .toList();
     final hasHoliday = dayHolidays.isNotEmpty;
+    final hasDayOff = dayHolidays.any((h) => h.isDayOff);
     final gregorianDate = date.toGregorian();
 
     return GestureDetector(
@@ -100,7 +101,7 @@ class WeeklyCalendarGrid extends StatelessWidget {
         margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color:
-              _getDayBackgroundColor(context, isSelected, isToday, hasHoliday),
+              _getDayBackgroundColor(context, isSelected, isToday, hasDayOff),
           borderRadius: BorderRadius.circular(8),
           border: isToday && !isSelected
               ? Border.all(
@@ -122,7 +123,7 @@ class WeeklyCalendarGrid extends StatelessWidget {
                 fontWeight:
                     isToday || isSelected ? FontWeight.bold : FontWeight.w500,
                 color:
-                    _getDayTextColor(context, isSelected, isToday, hasHoliday),
+                    _getDayTextColor(context, isSelected, isToday, hasDayOff),
               ),
             ),
             if (showGregorianCalendar)
@@ -134,7 +135,7 @@ class WeeklyCalendarGrid extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   color:
-                      _getDayTextColor(context, isSelected, isToday, hasHoliday)
+                      _getDayTextColor(context, isSelected, isToday, hasDayOff)
                           .withOpacity(0.75),
                 ),
               ),

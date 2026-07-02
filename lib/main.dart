@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:persian_fonts/persian_fonts.dart';
 import 'firebase_options.dart';
+import 'l10n/app_localizations.dart';
+import 'theme/app_theme.dart';
 import 'providers/calendar_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/welcome_screen.dart';
@@ -29,21 +30,25 @@ class MyApp extends StatelessWidget {
       create: (context) => CalendarProvider()..loadData(),
       child: Consumer<CalendarProvider>(
         builder: (context, provider, child) {
+          final isEnglish = provider.settings.language == 'en';
           return MaterialApp(
-            title: 'تقویم فارسی',
+            onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
             debugShowCheckedModeBanner: false,
-            locale: const Locale('fa', 'IR'),
+            locale: isEnglish
+                ? const Locale('en', 'US')
+                : const Locale('fa', 'IR'),
             supportedLocales: const [
               Locale('fa', 'IR'),
               Locale('en', 'US'),
             ],
             localizationsDelegates: const [
+              AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            theme: _buildLightTheme(provider.settings.primaryColor),
-            darkTheme: _buildDarkTheme(provider.settings.primaryColor),
+            theme: AppTheme.light(provider.settings.primaryColor),
+            darkTheme: AppTheme.dark(provider.settings.primaryColor),
             themeMode: provider.settings.autoTheme
                 ? ThemeMode.system
                 : provider.settings.isDarkMode
@@ -52,68 +57,6 @@ class MyApp extends StatelessWidget {
             home: const AuthGate(),
           );
         },
-      ),
-    );
-  }
-
-  ThemeData _buildLightTheme(String primaryColorHex) {
-    final primaryColor =
-        Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
-    final baseTheme = ThemeData.light(useMaterial3: true);
-    final textTheme = PersianFonts.vazirTextTheme.apply(
-      bodyColor: baseTheme.colorScheme.onSurface,
-      displayColor: baseTheme.colorScheme.onSurface,
-    );
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
-        brightness: Brightness.light,
-      ),
-      textTheme: textTheme,
-      primaryTextTheme: textTheme,
-      appBarTheme: AppBarTheme(
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      cardTheme: CardTheme(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-      ),
-    );
-  }
-
-  ThemeData _buildDarkTheme(String primaryColorHex) {
-    final primaryColor =
-        Color(int.parse(primaryColorHex.replaceFirst('#', '0xFF')));
-    final baseTheme = ThemeData.dark(useMaterial3: true);
-    final textTheme = PersianFonts.vazirTextTheme.apply(
-      bodyColor: baseTheme.colorScheme.onSurface,
-      displayColor: baseTheme.colorScheme.onSurface,
-    );
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
-        brightness: Brightness.dark,
-      ),
-      textTheme: textTheme,
-      primaryTextTheme: textTheme,
-      appBarTheme: const AppBarTheme(
-        centerTitle: true,
-        elevation: 0,
-      ),
-      cardTheme: CardTheme(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

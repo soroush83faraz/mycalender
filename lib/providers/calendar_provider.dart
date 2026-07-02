@@ -14,6 +14,9 @@ import '../models/settings.dart';
 import '../repositories/firestore_event_store.dart';
 import '../repositories/local_event_store.dart';
 import '../services/auth_service.dart';
+import '../services/google_calendar_service.dart';
+import '../services/location_service.dart';
+import '../services/notification_service.dart';
 
 class CalendarProvider extends ChangeNotifier {
   static const String _guestUiLoggedOutKey = 'guest_ui_logged_out';
@@ -101,9 +104,7 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   List<Holiday> getHolidaysForDate(JalaliDate date) {
-    return Holiday.getHolidaysForMonth(date.month)
-        .where((h) => h.day == date.day)
-        .toList();
+    return Holiday.occurrencesOnDate(date);
   }
 
   void setCurrentDate(JalaliDate date) {
@@ -158,6 +159,7 @@ class CalendarProvider extends ChangeNotifier {
     await _saveLocalEventsForCurrentScope(_events);
     _localEventCount = _events.length;
     await _upsertCloudEvent(event);
+    await _syncReminder(event);
     notifyListeners();
   }
 
@@ -168,6 +170,7 @@ class CalendarProvider extends ChangeNotifier {
     await _saveLocalEventsForCurrentScope(_events);
     _localEventCount = _events.length;
     await _upsertCloudEvent(event);
+    await _syncReminder(event);
     notifyListeners();
   }
 
@@ -180,7 +183,70 @@ class CalendarProvider extends ChangeNotifier {
     await _saveLocalEventsForCurrentScope(_events);
     _localEventCount = _events.length;
     await _softDeleteCloudEvent(target, eventId);
+    await NotificationService.cancelEventReminder(eventId);
     notifyListeners();
+  }
+
+  String _eventKey(String title, DateTime d) =>
+      '${title.trim()}|${d.year}-${d.month}-${d.day}';
+
+  /// Two-way sync with the user's Google Calendar: imports remote events that
+  /// are missing locally and exports local events that are missing remotely.
+  /// Requires a Google (non-guest) sign-in and the Calendar API enabled.
+  Future<GoogleSyncResult> syncWithGoogleCalendar() async {
+    final token = await AuthService.instance.requestCalendarAccess();
+    if (token == null) {
+      return const GoogleSyncResult(
+          success: false, error: 'no-calendar-access');
+    }
+    final service = GoogleCalendarService(token);
+    final now = DateTime.now();
+    final timeMin = now.subtract(const Duration(days: 60));
+    final timeMax = now.add(const Duration(days: 365));
+    var imported = 0;
+    var exported = 0;
+    try {
+      final remote =
+          await service.listEvents(timeMin: timeMin, timeMax: timeMax);
+      final localKeys = _events.map((e) => _eventKey(e.title, e.date)).toSet();
+      final remoteKeys =
+          remote.map((e) => _eventKey(e.title, e.start)).toSet();
+
+      for (final r in remote) {
+        final key = _eventKey(r.title, r.start);
+        if (!localKeys.contains(key)) {
+          await addEvent(r.toEvent());
+          localKeys.add(key);
+          imported++;
+        }
+      }
+
+      for (final e in List<Event>.from(_events)) {
+        if (e.id.startsWith('gcal_')) continue;
+        final key = _eventKey(e.title, e.date);
+        if (!remoteKeys.contains(key)) {
+          await service.insertEvent(e);
+          remoteKeys.add(key);
+          exported++;
+        }
+      }
+      return GoogleSyncResult(
+          success: true, imported: imported, exported: exported);
+    } catch (error) {
+      debugPrint('syncWithGoogleCalendar failed: $error');
+      return GoogleSyncResult(success: false, error: error.toString());
+    }
+  }
+
+  /// Keeps the scheduled local reminder in sync with an event's reminder
+  /// settings. Notifications are disabled unless the user enabled them.
+  Future<void> _syncReminder(Event event) async {
+    await NotificationService.cancelEventReminder(event.id);
+    if (_settings.enableNotifications &&
+        event.hasReminder &&
+        event.reminderTime != null) {
+      await NotificationService.scheduleEventReminder(event);
+    }
   }
 
   Future<void> updateSettings(AppSettings settings) async {
@@ -192,6 +258,21 @@ class CalendarProvider extends ChangeNotifier {
     }
     await _saveSettings();
     notifyListeners();
+  }
+
+  /// Attempts to read the device GPS location and store it in settings so
+  /// prayer times can use precise coordinates. Returns true on success.
+  /// Falls back silently (returns false) when permission is denied.
+  Future<bool> refreshDeviceLocation() async {
+    final location = await LocationService.getCurrentLocation();
+    if (location == null) return false;
+    _settings = _settings.copyWith(
+      latitude: location.latitude,
+      longitude: location.longitude,
+    );
+    await _saveSettings();
+    notifyListeners();
+    return true;
   }
 
   Future<void> loadData() async {

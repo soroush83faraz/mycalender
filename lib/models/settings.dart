@@ -12,6 +12,9 @@ class AppSettings {
   final bool showGregorianCalendar;
   final String location;
   final bool showPrayerTimes;
+  final bool useDeviceLocation;
+  final double? latitude;
+  final double? longitude;
 
   AppSettings({
     this.language = 'fa',
@@ -27,6 +30,9 @@ class AppSettings {
     this.showGregorianCalendar = false,
     this.location = 'Tehran',
     this.showPrayerTimes = false,
+    this.useDeviceLocation = true,
+    this.latitude,
+    this.longitude,
   });
 
   Map<String, dynamic> toJson() => {
@@ -43,6 +49,9 @@ class AppSettings {
     'showGregorianCalendar': showGregorianCalendar,
     'location': location,
     'showPrayerTimes': showPrayerTimes,
+    'useDeviceLocation': useDeviceLocation,
+    'latitude': latitude,
+    'longitude': longitude,
   };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -59,6 +68,9 @@ class AppSettings {
     showGregorianCalendar: json['showGregorianCalendar'] ?? false,
     location: json['location'] ?? 'Tehran',
     showPrayerTimes: json['showPrayerTimes'] ?? false,
+    useDeviceLocation: json['useDeviceLocation'] ?? true,
+    latitude: (json['latitude'] as num?)?.toDouble(),
+    longitude: (json['longitude'] as num?)?.toDouble(),
   );
 
   AppSettings copyWith({
@@ -75,6 +87,9 @@ class AppSettings {
     bool? showGregorianCalendar,
     String? location,
     bool? showPrayerTimes,
+    bool? useDeviceLocation,
+    double? latitude,
+    double? longitude,
   }) => AppSettings(
     language: language ?? this.language,
     isDarkMode: isDarkMode ?? this.isDarkMode,
@@ -89,5 +104,8 @@ class AppSettings {
     showGregorianCalendar: showGregorianCalendar ?? this.showGregorianCalendar,
     location: location ?? this.location,
     showPrayerTimes: showPrayerTimes ?? this.showPrayerTimes,
+    useDeviceLocation: useDeviceLocation ?? this.useDeviceLocation,
+    latitude: latitude ?? this.latitude,
+    longitude: longitude ?? this.longitude,
   );
 }

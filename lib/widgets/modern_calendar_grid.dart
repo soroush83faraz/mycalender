@@ -132,6 +132,7 @@ class ModernCalendarGrid extends StatelessWidget {
     final dayEvents = _getEventsForDay(day);
     final dayHolidays = holidays.where((h) => h.day == day).toList();
     final hasHoliday = dayHolidays.isNotEmpty;
+    final hasDayOff = dayHolidays.any((h) => h.isDayOff);
     final gregorianDate =
         JalaliDate(year: year, month: month, day: day).toGregorian();
 
@@ -142,7 +143,7 @@ class ModernCalendarGrid extends StatelessWidget {
         curve: Curves.easeOut,
         decoration: BoxDecoration(
           color:
-              _getDayBackgroundColor(context, isSelected, isToday, hasHoliday),
+              _getDayBackgroundColor(context, isSelected, isToday, hasDayOff),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: _getDayBorderColor(context, isSelected, isToday),
@@ -173,7 +174,7 @@ class ModernCalendarGrid extends StatelessWidget {
                   fontWeight:
                       isToday || isSelected ? FontWeight.bold : FontWeight.w500,
                   color: _getDayTextColor(
-                      context, isSelected, isToday, hasHoliday),
+                      context, isSelected, isToday, hasDayOff),
                 ),
               ),
             ),
@@ -190,7 +191,7 @@ class ModernCalendarGrid extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                     color: _getDayTextColor(
-                            context, isSelected, isToday, hasHoliday)
+                            context, isSelected, isToday, hasDayOff)
                         .withOpacity(0.75),
                   ),
                 ),

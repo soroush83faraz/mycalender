@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_localizations.dart';
 import '../providers/calendar_provider.dart';
 import '../services/auth_service.dart';
 
@@ -33,13 +34,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       final result = await AuthService.instance.signInOrUpgradeWithGoogle();
       if (result.redirectStarted && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Redirecting to Google...')),
+          SnackBar(
+              content: Text(AppLocalizations.of(context).redirectingToGoogle)),
         );
       }
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = 'Google sign-in failed: $error';
+        _error =
+            AppLocalizations.of(context).googleSignInFailed(error.toString());
       });
     } finally {
       if (mounted) {
@@ -54,18 +57,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Continue with Google'),
-        content: const Text(
-          'Guest calendars and events will stay in Guest mode and will not be moved to Google.',
-        ),
+        title: Text(AppLocalizations.of(context).guestDiscardWarningTitle),
+        content: Text(AppLocalizations.of(context).guestDiscardWarningBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Continue'),
+            child: Text(AppLocalizations.of(context).continueLabel),
           ),
         ],
       ),
@@ -85,7 +86,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = 'Guest sign-in failed: $error';
+        _error =
+            AppLocalizations.of(context).guestSignInFailed(error.toString());
       });
     } finally {
       if (mounted) {
@@ -98,6 +100,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -113,19 +116,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   const Icon(Icons.calendar_month, size: 56),
                   const SizedBox(height: 12),
                   Text(
-                    'Persian Calendar',
+                    l10n.welcomeTitle,
                     style: Theme.of(context).textTheme.headlineSmall,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _continueWithGoogle,
-                    child: const Text('Continue with Google'),
+                    child: Text(l10n.continueWithGoogle),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: _isLoading ? null : _continueAsGuest,
-                    child: const Text('Continue as Guest'),
+                    child: Text(l10n.continueAsGuest),
                   ),
                   if (_isLoading) ...[
                     const SizedBox(height: 16),

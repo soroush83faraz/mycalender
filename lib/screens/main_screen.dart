@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/events_screen.dart';
 import '../screens/tools_screen.dart';
@@ -35,6 +36,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (ResponsiveHelper.isDesktop(context)) {
       return Scaffold(
         body: Row(
@@ -49,26 +51,30 @@ class _MainScreenState extends State<MainScreen> {
                   });
                 },
                 labelType: NavigationRailLabelType.all,
-                destinations: const [
+                destinations: [
                   NavigationRailDestination(
-                    icon: Icon(Icons.calendar_month, size: 40),
-                    selectedIcon: Icon(Icons.calendar_month, size: 36),
-                    label: Text('تقویم', style: TextStyle(fontSize: 16)),
+                    icon: const Icon(Icons.calendar_month, size: 40),
+                    selectedIcon: const Icon(Icons.calendar_month, size: 36),
+                    label: Text(l10n.navCalendar,
+                        style: const TextStyle(fontSize: 16)),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.event, size: 40),
-                    selectedIcon: Icon(Icons.event, size: 36),
-                    label: Text('رویدادها', style: TextStyle(fontSize: 16)),
+                    icon: const Icon(Icons.event, size: 40),
+                    selectedIcon: const Icon(Icons.event, size: 36),
+                    label: Text(l10n.navEvents,
+                        style: const TextStyle(fontSize: 16)),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.calculate, size: 40),
-                    selectedIcon: Icon(Icons.calculate, size: 36),
-                    label: Text('ابزارها', style: TextStyle(fontSize: 16)),
+                    icon: const Icon(Icons.calculate, size: 40),
+                    selectedIcon: const Icon(Icons.calculate, size: 36),
+                    label: Text(l10n.navTools,
+                        style: const TextStyle(fontSize: 16)),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.settings, size: 40),
-                    selectedIcon: Icon(Icons.settings, size: 36),
-                    label: Text('تنظیمات', style: TextStyle(fontSize: 16)),
+                    icon: const Icon(Icons.settings, size: 40),
+                    selectedIcon: const Icon(Icons.settings, size: 36),
+                    label: Text(l10n.navSettings,
+                        style: const TextStyle(fontSize: 16)),
                   ),
                 ],
               ),
@@ -97,22 +103,22 @@ class _MainScreenState extends State<MainScreen> {
             _currentIndex = index;
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.calendar_month),
-            label: 'تقویم',
+            icon: const Icon(Icons.calendar_month),
+            label: l10n.navCalendar,
           ),
           NavigationDestination(
-            icon: Icon(Icons.event),
-            label: 'رویدادها',
+            icon: const Icon(Icons.event),
+            label: l10n.navEvents,
           ),
           NavigationDestination(
-            icon: Icon(Icons.calculate),
-            label: 'ابزارها',
+            icon: const Icon(Icons.calculate),
+            label: l10n.navTools,
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings),
-            label: 'تنظیمات',
+            icon: const Icon(Icons.settings),
+            label: l10n.navSettings,
           ),
         ],
       ),

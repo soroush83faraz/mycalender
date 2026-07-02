@@ -49,7 +49,7 @@ class YearlyCalendarGrid extends StatelessWidget {
     final daysInMonth = CalendarUtils.getDaysInMonth(year, month);
     final firstDayWeekday = CalendarUtils.getFirstDayOfMonth(year, month);
     final monthEvents = _getEventsForMonth(month);
-    final monthHolidays = Holiday.getHolidaysForMonth(month);
+    final monthHolidays = Holiday.occurrencesForJalaliMonth(year, month);
     final isCurrentMonth =
         selectedDate?.year == year && selectedDate?.month == month;
     final firstGregorianDate =
