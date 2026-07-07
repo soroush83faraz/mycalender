@@ -1150,6 +1150,108 @@ abstract class AppLocalizations {
   /// In fa, this message translates to:
   /// **'دسترسی مشاهده‌گر: امکان افزودن رویداد نیست'**
   String get viewerCannotAdd;
+
+  /// No description provided for @moreItems.
+  ///
+  /// In fa, this message translates to:
+  /// **'{count}+ مورد دیگر'**
+  String moreItems(String count);
+
+  /// No description provided for @noEventsForDay.
+  ///
+  /// In fa, this message translates to:
+  /// **'رویدادی برای این روز ثبت نشده است'**
+  String get noEventsForDay;
+
+  /// No description provided for @viewMonthShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'ماه'**
+  String get viewMonthShort;
+
+  /// No description provided for @viewWeekShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'هفته'**
+  String get viewWeekShort;
+
+  /// No description provided for @viewYearShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'سال'**
+  String get viewYearShort;
+
+  /// No description provided for @compass.
+  ///
+  /// In fa, this message translates to:
+  /// **'قطب‌نما'**
+  String get compass;
+
+  /// No description provided for @compassSub.
+  ///
+  /// In fa, this message translates to:
+  /// **'جهت قبله و شمال'**
+  String get compassSub;
+
+  /// No description provided for @qiblaDirection.
+  ///
+  /// In fa, this message translates to:
+  /// **'جهت قبله'**
+  String get qiblaDirection;
+
+  /// No description provided for @facingQibla.
+  ///
+  /// In fa, this message translates to:
+  /// **'رو به قبله هستید'**
+  String get facingQibla;
+
+  /// No description provided for @compassNotAvailable.
+  ///
+  /// In fa, this message translates to:
+  /// **'حسگر قطب‌نما در این دستگاه در دسترس نیست'**
+  String get compassNotAvailable;
+
+  /// No description provided for @compassCalibrationHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای دقت بیشتر، گوشی را چند بار به شکل ∞ حرکت دهید و از اجسام فلزی دور نگه دارید'**
+  String get compassCalibrationHint;
+
+  /// No description provided for @basedOnLocation.
+  ///
+  /// In fa, this message translates to:
+  /// **'بر اساس موقعیت: {location}'**
+  String basedOnLocation(String location);
+
+  /// No description provided for @cardinalNorth.
+  ///
+  /// In fa, this message translates to:
+  /// **'شمال'**
+  String get cardinalNorth;
+
+  /// No description provided for @cardinalEast.
+  ///
+  /// In fa, this message translates to:
+  /// **'شرق'**
+  String get cardinalEast;
+
+  /// No description provided for @cardinalSouth.
+  ///
+  /// In fa, this message translates to:
+  /// **'جنوب'**
+  String get cardinalSouth;
+
+  /// No description provided for @cardinalWest.
+  ///
+  /// In fa, this message translates to:
+  /// **'غرب'**
+  String get cardinalWest;
+
+  /// No description provided for @checkForUpdates.
+  ///
+  /// In fa, this message translates to:
+  /// **'بررسی به‌روزرسانی'**
+  String get checkForUpdates;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

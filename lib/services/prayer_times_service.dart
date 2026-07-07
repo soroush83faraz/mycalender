@@ -197,6 +197,14 @@ class PrayerTimesService {
   static List<String> get cityNames =>
       _cities.map((c) => c.name).toList(growable: false);
 
+  /// Latitude/longitude of a known city (falls back to Tehran), for features
+  /// like the qibla compass that need coordinates without GPS.
+  static ({double latitude, double longitude, String name}) coordinatesForCity(
+      String cityName) {
+    final city = _resolveCity(cityName);
+    return (latitude: city.latitude, longitude: city.longitude, name: city.name);
+  }
+
   static _CityCoordinate _resolveCity(String rawCityName) {
     final normalized = _normalize(rawCityName);
     for (final city in _cities) {

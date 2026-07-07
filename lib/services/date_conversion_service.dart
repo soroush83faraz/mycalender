@@ -1,54 +1,10 @@
 import '../models/jalali_date.dart';
 
 class DateConversionService {
-  // Convert Jalali to Gregorian
+  // Convert Jalali to Gregorian. Delegates to the single verified conversion
+  // in JalaliDate so every part of the app produces identical dates.
   static DateTime jalaliToGregorian(JalaliDate jalali) {
-    int jy = jalali.year;
-    int jm = jalali.month;
-    int jd = jalali.day;
-
-    int totalDays = 365 * jy + ((jy + 1474) ~/ 2820) * 1029983;
-    totalDays += (((jy + 1474) % 2820 + 474) ~/ 2816) * 682;
-    
-    for (int i = 1; i < jm; i++) {
-      if (i <= 6) totalDays += 31;
-      else if (i <= 11) totalDays += 30;
-      else totalDays += isJalaliLeapYear(jy) ? 30 : 29;
-    }
-    totalDays += jd - 1;
-
-    // Convert to Gregorian
-    totalDays += 227015; // Epoch difference
-    
-    int gy = 1600 + 400 * (totalDays ~/ 146097);
-    totalDays %= 146097;
-    
-    if (totalDays >= 36525) {
-      totalDays--;
-      gy += 100 * (totalDays ~/ 36524);
-      totalDays %= 36524;
-      if (totalDays >= 365) totalDays++;
-    }
-    
-    gy += 4 * (totalDays ~/ 1461);
-    totalDays %= 1461;
-    
-    if (totalDays >= 366) {
-      totalDays--;
-      gy += totalDays ~/ 365;
-      totalDays %= 365;
-    }
-    
-    List<int> monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if (isGregorianLeapYear(gy)) monthDays[1] = 29;
-    
-    int gm = 1;
-    while (totalDays >= monthDays[gm - 1]) {
-      totalDays -= monthDays[gm - 1];
-      gm++;
-    }
-    
-    return DateTime(gy, gm, totalDays + 1);
+    return jalali.toGregorian();
   }
 
   // Convert Gregorian to Lunar (Hijri)
@@ -111,10 +67,14 @@ class DateConversionService {
     return {'years': years, 'months': months, 'days': totalDays};
   }
 
+  // A Jalali year is leap when it has 366 days; derived from the same
+  // conversion the rest of the app uses (the 2820-cycle formula previously
+  // here disagreed with it for years like 1403/1404).
   static bool isJalaliLeapYear(int year) {
-    final cycle = year + 1474;
-    final aux = ((cycle % 2820) + 474) % 2816;
-    return (aux + 38) * 682 % 2816 < 682;
+    final startOfYear = JalaliDate(year: year, month: 1, day: 1).toGregorian();
+    final startOfNextYear =
+        JalaliDate(year: year + 1, month: 1, day: 1).toGregorian();
+    return startOfNextYear.difference(startOfYear).inDays == 366;
   }
 
   static bool isGregorianLeapYear(int year) {

@@ -5,6 +5,8 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/calendar_provider.dart';
 import '../services/notification_service.dart';
+import '../utils/responsive_helper.dart';
+import '../widgets/update_dialog.dart';
 import 'backend_health_check_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -28,21 +30,23 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _buildAccountSection(context, provider),
-              const SizedBox(height: 16),
-              _buildThemeSection(context, provider),
-              const SizedBox(height: 16),
-              _buildDisplaySection(context, provider),
-              const SizedBox(height: 16),
-              _buildNotificationSection(context, provider),
-              const SizedBox(height: 16),
-              _buildCalendarSection(context, provider),
-              const SizedBox(height: 16),
-              _buildAboutSection(context),
-            ],
+          body: AdaptiveContent(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildAccountSection(context, provider),
+                const SizedBox(height: 16),
+                _buildThemeSection(context, provider),
+                const SizedBox(height: 16),
+                _buildDisplaySection(context, provider),
+                const SizedBox(height: 16),
+                _buildNotificationSection(context, provider),
+                const SizedBox(height: 16),
+                _buildCalendarSection(context, provider),
+                const SizedBox(height: 16),
+                _buildAboutSection(context),
+              ],
+            ),
           ),
         );
       },
@@ -293,6 +297,12 @@ class SettingsScreen extends StatelessWidget {
               title: Text(l10n.version),
               subtitle: const Text('۱.۰.۰'),
               leading: const Icon(Icons.info),
+            ),
+            ListTile(
+              title: Text(l10n.checkForUpdates),
+              leading: const Icon(Icons.system_update),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => checkForUpdateAndPrompt(context),
             ),
             ListTile(
               title: Text(l10n.developer),

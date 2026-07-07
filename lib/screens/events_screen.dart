@@ -4,6 +4,7 @@ import '../providers/calendar_provider.dart';
 import '../models/event.dart';
 import '../models/jalali_date.dart';
 import '../utils/calendar_utils.dart';
+import '../utils/responsive_helper.dart';
 import '../l10n/app_localizations.dart';
 import 'add_event_screen.dart';
 
@@ -39,15 +40,17 @@ class _EventsScreenState extends State<EventsScreen> {
               ),
             ),
           ),
-          body: filteredEvents.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredEvents.length,
-                  itemBuilder: (context, index) {
-                    return _buildEventCard(context, filteredEvents[index]);
-                  },
-                ),
+          body: AdaptiveContent(
+            child: filteredEvents.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredEvents.length,
+                    itemBuilder: (context, index) {
+                      return _buildEventCard(context, filteredEvents[index]);
+                    },
+                  ),
+          ),
           floatingActionButton: FloatingActionButton(
             onPressed: canEdit
                 ? () {

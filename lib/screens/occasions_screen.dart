@@ -5,6 +5,7 @@ import '../models/holiday.dart';
 import '../models/jalali_date.dart';
 import '../providers/calendar_provider.dart';
 import '../utils/calendar_utils.dart';
+import '../utils/responsive_helper.dart';
 
 /// Browse and search all calendar occasions (official, religious, ancient,
 /// international) for the current Persian year, sorted by date with a live
@@ -51,7 +52,8 @@ class _OccasionsScreenState extends State<OccasionsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.occasions)),
-      body: Column(
+      body: AdaptiveContent(
+        child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -99,6 +101,7 @@ class _OccasionsScreenState extends State<OccasionsScreen> {
                   ),
           ),
         ],
+        ),
       ),
     );
   }

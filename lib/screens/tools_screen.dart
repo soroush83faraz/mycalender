@@ -4,6 +4,8 @@ import '../services/date_conversion_service.dart';
 import '../services/nowruz_service.dart';
 import '../models/jalali_date.dart';
 import '../utils/calendar_utils.dart';
+import '../utils/responsive_helper.dart';
+import 'compass_screen.dart';
 import 'occasions_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
@@ -21,7 +23,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
       appBar: AppBar(
         title: Text(l10n.tools),
       ),
-      body: ListView(
+      body: AdaptiveContent(
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildToolCard(
@@ -76,7 +79,18 @@ class _ToolsScreenState extends State<ToolsScreen> {
             Icons.public,
             () => _showWorldClock(context),
           ),
+          _buildToolCard(
+            context,
+            l10n.compass,
+            l10n.compassSub,
+            Icons.explore_outlined,
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CompassScreen()),
+            ),
+          ),
         ],
+        ),
       ),
     );
   }

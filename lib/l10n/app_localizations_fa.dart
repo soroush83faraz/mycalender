@@ -573,4 +573,59 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get viewerCannotAdd => 'دسترسی مشاهده‌گر: امکان افزودن رویداد نیست';
+
+  @override
+  String moreItems(String count) {
+    return '$count+ مورد دیگر';
+  }
+
+  @override
+  String get noEventsForDay => 'رویدادی برای این روز ثبت نشده است';
+
+  @override
+  String get viewMonthShort => 'ماه';
+
+  @override
+  String get viewWeekShort => 'هفته';
+
+  @override
+  String get viewYearShort => 'سال';
+
+  @override
+  String get compass => 'قطب‌نما';
+
+  @override
+  String get compassSub => 'جهت قبله و شمال';
+
+  @override
+  String get qiblaDirection => 'جهت قبله';
+
+  @override
+  String get facingQibla => 'رو به قبله هستید';
+
+  @override
+  String get compassNotAvailable => 'حسگر قطب‌نما در این دستگاه در دسترس نیست';
+
+  @override
+  String get compassCalibrationHint => 'برای دقت بیشتر، گوشی را چند بار به شکل ∞ حرکت دهید و از اجسام فلزی دور نگه دارید';
+
+  @override
+  String basedOnLocation(String location) {
+    return 'بر اساس موقعیت: $location';
+  }
+
+  @override
+  String get cardinalNorth => 'شمال';
+
+  @override
+  String get cardinalEast => 'شرق';
+
+  @override
+  String get cardinalSouth => 'جنوب';
+
+  @override
+  String get cardinalWest => 'غرب';
+
+  @override
+  String get checkForUpdates => 'بررسی به‌روزرسانی';
 }

@@ -275,5 +275,32 @@
   },
   "guestDiscardWarningTitle": "ورود با گوگل",
   "guestDiscardWarningBody": "تقویم‌ها و رویدادهای حالت مهمان در همان حالت باقی می‌مانند و به حساب گوگل منتقل نمی‌شوند.",
-  "viewerCannotAdd": "دسترسی مشاهده‌گر: امکان افزودن رویداد نیست"
+  "viewerCannotAdd": "دسترسی مشاهده‌گر: امکان افزودن رویداد نیست",
+  "moreItems": "{count}+ مورد دیگر",
+  "@moreItems": {
+    "placeholders": {
+      "count": {"type": "String"}
+    }
+  },
+  "noEventsForDay": "رویدادی برای این روز ثبت نشده است",
+  "viewMonthShort": "ماه",
+  "viewWeekShort": "هفته",
+  "viewYearShort": "سال",
+  "compass": "قطب‌نما",
+  "compassSub": "جهت قبله و شمال",
+  "qiblaDirection": "جهت قبله",
+  "facingQibla": "رو به قبله هستید",
+  "compassNotAvailable": "حسگر قطب‌نما در این دستگاه در دسترس نیست",
+  "compassCalibrationHint": "برای دقت بیشتر، گوشی را چند بار به شکل ∞ حرکت دهید و از اجسام فلزی دور نگه دارید",
+  "basedOnLocation": "بر اساس موقعیت: {location}",
+  "@basedOnLocation": {
+    "placeholders": {
+      "location": {"type": "String"}
+    }
+  },
+  "cardinalNorth": "شمال",
+  "cardinalEast": "شرق",
+  "cardinalSouth": "جنوب",
+  "cardinalWest": "غرب",
+  "checkForUpdates": "بررسی به‌روزرسانی"
 }

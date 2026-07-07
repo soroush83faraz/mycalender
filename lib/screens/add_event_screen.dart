@@ -6,6 +6,7 @@ import '../models/event.dart';
 import '../models/jalali_date.dart';
 import '../services/date_conversion_service.dart';
 import '../utils/calendar_utils.dart';
+import '../widgets/jalali_date_picker.dart';
 import '../l10n/app_localizations.dart';
 
 class AddEventScreen extends StatefulWidget {
@@ -254,31 +255,39 @@ class _AddEventScreenState extends State<AddEventScreen> {
   }
 
   Future<void> _selectDateTime() async {
-    final date = await showDatePicker(
+    // Pick the date in the Jalali calendar — the same calendar the app
+    // displays — then convert once through the verified conversion.
+    final picked = await showJalaliDatePicker(
+      context,
+      initialDate: JalaliDate.fromGregorian(_selectedDateTime),
+    );
+    if (picked == null || !mounted) return;
+
+    final gregorian = picked.toGregorian();
+    final time = await showTimePicker(
       context: context,
-      initialDate: _selectedDateTime,
-      firstDate: DateTime(1900),
-      lastDate: DateTime(2100),
+      initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
     );
 
-    if (date != null) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
+    setState(() {
+      _selectedDateTime = DateTime(
+        gregorian.year,
+        gregorian.month,
+        gregorian.day,
+        time?.hour ?? _selectedDateTime.hour,
+        time?.minute ?? _selectedDateTime.minute,
       );
-
-      if (time != null) {
-        setState(() {
-          _selectedDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
-          );
-        });
+      // Keep an existing reminder on the same day as the event.
+      if (_reminderTime != null) {
+        _reminderTime = DateTime(
+          gregorian.year,
+          gregorian.month,
+          gregorian.day,
+          _reminderTime!.hour,
+          _reminderTime!.minute,
+        );
       }
-    }
+    });
   }
 
   Future<void> _selectColor() async {

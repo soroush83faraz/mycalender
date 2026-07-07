@@ -175,5 +175,32 @@
   "guestSignInFailed": "Guest sign-in failed: {error}",
   "guestDiscardWarningTitle": "Continue with Google",
   "guestDiscardWarningBody": "Guest calendars and events will stay in Guest mode and will not be moved to Google.",
-  "viewerCannotAdd": "Viewer access: cannot add events"
+  "viewerCannotAdd": "Viewer access: cannot add events",
+  "moreItems": "+{count} more",
+  "@moreItems": {
+    "placeholders": {
+      "count": {"type": "String"}
+    }
+  },
+  "noEventsForDay": "No events for this day",
+  "viewMonthShort": "Month",
+  "viewWeekShort": "Week",
+  "viewYearShort": "Year",
+  "compass": "Compass",
+  "compassSub": "Qibla direction and north",
+  "qiblaDirection": "Qibla direction",
+  "facingQibla": "You are facing the qibla",
+  "compassNotAvailable": "Compass sensor is not available on this device",
+  "compassCalibrationHint": "For better accuracy, move your phone in a figure-8 motion and keep it away from metal objects",
+  "basedOnLocation": "Based on location: {location}",
+  "@basedOnLocation": {
+    "placeholders": {
+      "location": {"type": "String"}
+    }
+  },
+  "cardinalNorth": "N",
+  "cardinalEast": "E",
+  "cardinalSouth": "S",
+  "cardinalWest": "W",
+  "checkForUpdates": "Check for updates"
 }

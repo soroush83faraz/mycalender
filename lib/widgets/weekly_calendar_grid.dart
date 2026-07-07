@@ -110,60 +110,71 @@ class WeeklyCalendarGrid extends StatelessWidget {
                 )
               : null,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Text(
-              CalendarUtils.formatNumber(
-                date.day,
-                usePersian: usePersianNumbers,
-              ),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight:
-                    isToday || isSelected ? FontWeight.bold : FontWeight.w500,
-                color:
-                    _getDayTextColor(context, isSelected, isToday, hasDayOff),
-              ),
-            ),
-            if (showGregorianCalendar)
-              Text(
+            // Day number dead-center in the cell.
+            Center(
+              child: Text(
                 CalendarUtils.formatNumber(
-                  gregorianDate.day,
+                  date.day,
                   usePersian: usePersianNumbers,
                 ),
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 16,
+                  fontWeight:
+                      isToday || isSelected ? FontWeight.bold : FontWeight.w500,
                   color:
-                      _getDayTextColor(context, isSelected, isToday, hasDayOff)
-                          .withOpacity(0.75),
+                      _getDayTextColor(context, isSelected, isToday, hasDayOff),
+                ),
+              ),
+            ),
+            if (showGregorianCalendar)
+              Positioned(
+                top: 3,
+                left: 5,
+                child: Text(
+                  CalendarUtils.formatNumber(
+                    gregorianDate.day,
+                    usePersian: usePersianNumbers,
+                  ),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _getDayTextColor(
+                            context, isSelected, isToday, hasDayOff)
+                        .withOpacity(0.75),
+                  ),
                 ),
               ),
             if (dayEvents.isNotEmpty || hasHoliday)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (dayEvents.isNotEmpty)
-                    Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary,
-                        shape: BoxShape.circle,
+              Positioned(
+                bottom: 5,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (dayEvents.isNotEmpty)
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondary,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                  if (dayEvents.isNotEmpty && hasHoliday)
-                    const SizedBox(width: 2),
-                  if (hasHoliday)
-                    Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: _getHolidayColor(dayHolidays.first.type),
-                        shape: BoxShape.circle,
+                    if (dayEvents.isNotEmpty && hasHoliday)
+                      const SizedBox(width: 2),
+                    if (hasHoliday)
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: _getHolidayColor(dayHolidays.first.type),
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
           ],
         ),

@@ -573,4 +573,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerCannotAdd => 'Viewer access: cannot add events';
+
+  @override
+  String moreItems(String count) {
+    return '+$count more';
+  }
+
+  @override
+  String get noEventsForDay => 'No events for this day';
+
+  @override
+  String get viewMonthShort => 'Month';
+
+  @override
+  String get viewWeekShort => 'Week';
+
+  @override
+  String get viewYearShort => 'Year';
+
+  @override
+  String get compass => 'Compass';
+
+  @override
+  String get compassSub => 'Qibla direction and north';
+
+  @override
+  String get qiblaDirection => 'Qibla direction';
+
+  @override
+  String get facingQibla => 'You are facing the qibla';
+
+  @override
+  String get compassNotAvailable => 'Compass sensor is not available on this device';
+
+  @override
+  String get compassCalibrationHint => 'For better accuracy, move your phone in a figure-8 motion and keep it away from metal objects';
+
+  @override
+  String basedOnLocation(String location) {
+    return 'Based on location: $location';
+  }
+
+  @override
+  String get cardinalNorth => 'N';
+
+  @override
+  String get cardinalEast => 'E';
+
+  @override
+  String get cardinalSouth => 'S';
+
+  @override
+  String get cardinalWest => 'W';
+
+  @override
+  String get checkForUpdates => 'Check for updates';
 }
